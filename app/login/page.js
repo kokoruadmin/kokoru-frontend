@@ -10,7 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const search = useSearchParams();
   const redirectTo = search?.get("redirectTo") || "/shop";
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const API_BASE_URL =process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.1.22:5000";
 
   useEffect(() => {
     setIsClient(true);
