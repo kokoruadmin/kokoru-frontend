@@ -37,19 +37,34 @@ export default function MyOrdersPage() {
     fetchOrders(storedUser.email);
   }, [isClient]);
 
-  const fetchOrders = async (email) => {
-    if (!isClient) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/orders?userEmail=${encodeURIComponent(email)}`);
-      const data = await res.json();
-      setOrders(data || []);
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-    } finally {
-      setLoading(false);
+const fetchOrders = async (email) => {
+  setLoading(true);
+  try {
+    const token = localStorage.getItem("kokoru_token");
+    const res = await fetch(
+      `${API_BASE_URL}/api/orders?userEmail=${encodeURIComponent(email)}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    // 🟣 If token invalid or expired
+    if (res.status === 401) {
+      alert("Session expired. Please log in again.");
+      localStorage.removeItem("kokoru_token");
+      localStorage.removeItem("kokoru_user");
+      window.location.href = "/login";
+      return;
     }
-  };
+
+    const data = await res.json();
+    setOrders(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const printInvoice = async (orderId) => {
     if (!isClient) return;
