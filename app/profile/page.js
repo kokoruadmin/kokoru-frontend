@@ -9,7 +9,10 @@ export default function ProfilePage() {
   const [form, setForm] = useState({ name: "", mobile: "", defaultAddress: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  // ✅ Safe fallback for production
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "https://kokoru-backend.onrender.com";
 
   useEffect(() => {
     setIsClient(true);
@@ -25,7 +28,8 @@ export default function ProfilePage() {
       return;
     }
 
-    fetch(`${API_BASE_URL}/api/users/profile`, {
+    // ✅ Correct endpoint now -> /api/users/me
+    fetch(`${API_BASE_URL}/api/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (res) => {
@@ -39,14 +43,22 @@ export default function ProfilePage() {
         }
       })
       .then((data) => {
-        if (data?.user) {
-          setUser(data.user);
+        if (data && data.email) {
+          setUser(data);
           setForm({
-            name: data.user.name || "",
-            mobile: data.user.mobile || "",
-            defaultAddress: data.user.defaultAddress || "",
+            name: data.name || "",
+            mobile: data.mobile || "",
+            defaultAddress: data.defaultAddress || "",
           });
+        } else {
+          throw new Error("Invalid user data");
         }
+      })
+      .catch((err) => {
+        console.error("Profile load error:", err);
+        alert("Session expired. Please log in again.");
+        localStorage.removeItem("kokoru_token");
+        window.location.href = "/login";
       })
       .finally(() => setLoading(false));
   }, [isClient]);
