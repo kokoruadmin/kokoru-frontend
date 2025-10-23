@@ -1,8 +1,10 @@
 "use client";
 export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 function formatDate(d) {
   try {
     return new Date(d).toLocaleString();
@@ -12,22 +14,31 @@ function formatDate(d) {
 }
 
 export default function MyOrdersPage() {
+  const [isClient, setIsClient] = useState(false);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     const storedUser = JSON.parse(localStorage.getItem("kokoru_user"));
     if (!storedUser) {
       alert("Please login to view your orders.");
       window.location.href = "/login";
       return;
     }
+
     setUser(storedUser);
     fetchOrders(storedUser.email);
-  }, []);
+  }, [isClient]);
 
   const fetchOrders = async (email) => {
+    if (!isClient) return;
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/orders?userEmail=${encodeURIComponent(email)}`);
@@ -41,8 +52,9 @@ export default function MyOrdersPage() {
   };
 
   const printInvoice = async (orderId) => {
+    if (!isClient) return;
     const invoiceWindow = window.open("", "_blank", "width=900,height=1000");
-    if (!invoiceWindow || invoiceWindow.closed || typeof invoiceWindow.closed === "undefined") {
+    if (!invoiceWindow) {
       alert("⚠️ Please allow popups to view invoice.");
       return;
     }
@@ -104,6 +116,13 @@ export default function MyOrdersPage() {
       invoiceWindow.document.body.innerHTML = `<p style='color:red;'>Error: ${err.message}</p>`;
     }
   };
+
+  if (!isClient)
+    return (
+      <main className="min-h-screen flex items-center justify-center text-gray-600">
+        Loading...
+      </main>
+    );
 
   return (
     <main className="min-h-screen p-6 bg-purple-50 text-gray-800">

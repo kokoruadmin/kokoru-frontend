@@ -1,8 +1,10 @@
 "use client";
 export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
+  const [isClient, setIsClient] = useState(false);
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({ name: "", mobile: "", defaultAddress: "" });
   const [loading, setLoading] = useState(true);
@@ -10,6 +12,12 @@ export default function ProfilePage() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     const token = localStorage.getItem("kokoru_token");
     if (!token) {
       alert("Please log in to view your profile.");
@@ -41,9 +49,11 @@ export default function ProfilePage() {
         }
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [isClient]);
 
   const handleSave = async () => {
+    if (!isClient) return;
+
     const token = localStorage.getItem("kokoru_token");
     if (!token) return alert("Please login first");
 
@@ -73,6 +83,13 @@ export default function ProfilePage() {
       setSaving(false);
     }
   };
+
+  if (!isClient)
+    return (
+      <main className="min-h-screen flex items-center justify-center text-gray-600">
+        Loading...
+      </main>
+    );
 
   if (loading)
     return (

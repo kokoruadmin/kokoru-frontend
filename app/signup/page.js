@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+export const dynamic = "force-dynamic";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 export default function SignupPage() {
   const search = useSearchParams();
-  const redirectTo = search?.get("redirectTo") || "/shop";
+  const [redirectTo, setRedirectTo] = useState("/shop");
+  const [isClient, setIsClient] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -14,8 +16,16 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+  // ✅ Only run client-side logic after mount
+  useEffect(() => {
+    setIsClient(true);
+    const param = search?.get("redirectTo");
+    if (param) setRedirectTo(param);
+  }, [search]);
+
   const handleSignup = async (e) => {
     e.preventDefault();
+    if (!isClient) return;
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
@@ -49,6 +59,8 @@ export default function SignupPage() {
       alert("Signup error. See console.");
     }
   };
+
+  if (!isClient) return null; // ⛔️ Prevent SSR mismatch
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-white text-gray-800">
