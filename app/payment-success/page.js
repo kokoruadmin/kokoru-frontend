@@ -1,13 +1,24 @@
 "use client";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 export default function PaymentSuccess() {
   const searchParams = useSearchParams();
-  const orderId = searchParams.get("order_id");
-  const paymentId = searchParams.get("payment_id");
-  const amount = searchParams.get("amount");
+  const [query, setQuery] = useState({ orderId: "", paymentId: "", amount: "" });
+
+  useEffect(() => {
+    // ✅ Move parameter extraction to client side
+    const orderId = searchParams.get("order_id");
+    const paymentId = searchParams.get("payment_id");
+    const amount = searchParams.get("amount");
+
+    setQuery({ orderId, paymentId, amount });
+  }, [searchParams]);
+
+  // Avoid SSR mismatch during Vercel build
+  if (!query.orderId && !query.paymentId && !query.amount) return null;
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-purple-50 text-gray-800 p-6">
@@ -18,9 +29,9 @@ export default function PaymentSuccess() {
         <p className="text-gray-600 mb-2">Thank you for shopping with Kokoru 🌸</p>
 
         <div className="text-left mt-4 mb-6 text-sm">
-          <p><strong>Order ID:</strong> {orderId}</p>
-          <p><strong>Payment ID:</strong> {paymentId}</p>
-          <p><strong>Amount Paid:</strong> ₹{amount}</p>
+          <p><strong>Order ID:</strong> {query.orderId}</p>
+          <p><strong>Payment ID:</strong> {query.paymentId}</p>
+          <p><strong>Amount Paid:</strong> ₹{query.amount}</p>
         </div>
 
         <Link
