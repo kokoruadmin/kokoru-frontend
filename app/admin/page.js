@@ -5,6 +5,7 @@ import { getImageUrl } from "../../utils/imageHelper";
 import ShareButton from "@/components/ShareButton";
 
 
+
 /*
   AdminPage:
   - Left: Stats + Orders tab toggle
@@ -64,15 +65,58 @@ export default function AdminPage() {
   };
 
   // fetch orders
-  const fetchOrders = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/orders`);
-      const data = await res.json();
-      setOrders(data || []);
-    } catch (err) {
-      console.error("Fetch orders error:", err);
+// 🟣 Secure fetchOrders with token + graceful 401 handling
+const fetchOrders = async () => {
+  try {
+    const token = localStorage.getItem("kokoru_token");
+    if (!token) {
+      console.warn("⚠️ No token found — redirecting to login");
+      alert("Session expired. Please log in again.");
+      window.location.href = "/login";
+      return;
     }
-  };
+
+    const res = await fetch(`${API_BASE_URL}/api/orders`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.status === 401) {
+      alert("Session expired or unauthorized. Please log in again.");
+      localStorage.removeItem("kokoru_token");
+      localStorage.removeItem("kokoru_user");
+      window.location.href = "/login";
+      return;
+    }
+
+    const data = await res.json();
+    // ensure we only set array
+    setOrders(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error("❌ Fetch orders error:", err);
+    setOrders([]); // prevent crash
+  }
+};
+useEffect(() => {
+  const token = localStorage.getItem("kokoru_token");
+  const userData = localStorage.getItem("kokoru_user");
+
+  if (!token || !userData) {
+    window.location.href = "/admin/login";
+    return;
+  }
+
+  try {
+    const user = JSON.parse(userData);
+    if (!user.isAdmin) {
+      alert("Access denied. Admins only.");
+      window.location.href = "/";
+      return;
+    }
+  } catch {
+    localStorage.clear();
+    window.location.href = "/admin/login";
+  }
+}, []);
 
   useEffect(() => {
     fetchProducts();
