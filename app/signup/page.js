@@ -1,27 +1,32 @@
 "use client";
 export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 export default function SignupPage() {
-  const search = useSearchParams();
-  const [redirectTo, setRedirectTo] = useState("/shop");
   const [isClient, setIsClient] = useState(false);
+  const [redirectTo, setRedirectTo] = useState("/shop");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [defaultAddress, setDefaultAddress] = useState("");
   const [password, setPassword] = useState("");
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  // ✅ Only run client-side logic after mount
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "https://kokoru-backend.onrender.com";
+
   useEffect(() => {
     setIsClient(true);
-    const param = search?.get("redirectTo");
-    if (param) setRedirectTo(param);
-  }, [search]);
+
+    // Safely read redirect parameter from browser URL
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirectTo");
+      if (redirect) setRedirectTo(redirect);
+    }
+  }, []);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -60,7 +65,12 @@ export default function SignupPage() {
     }
   };
 
-  if (!isClient) return null; // ⛔️ Prevent SSR mismatch
+  if (!isClient)
+    return (
+      <main className="min-h-screen flex items-center justify-center text-gray-600">
+        Loading...
+      </main>
+    );
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-white text-gray-800">
