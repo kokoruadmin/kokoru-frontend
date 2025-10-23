@@ -1,24 +1,30 @@
 "use client";
 export const dynamic = "force-dynamic";
-import Link from "next/link";
+
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 export default function PaymentSuccess() {
-  const searchParams = useSearchParams();
-  const [query, setQuery] = useState({ orderId: "", paymentId: "", amount: "" });
+  const [isClient, setIsClient] = useState(false);
+  const [orderId, setOrderId] = useState("");
+  const [paymentId, setPaymentId] = useState("");
+  const [amount, setAmount] = useState("");
 
+  // ✅ Make sure URL parsing happens only on client
   useEffect(() => {
-    // ✅ Move parameter extraction to client side
-    const orderId = searchParams.get("order_id");
-    const paymentId = searchParams.get("payment_id");
-    const amount = searchParams.get("amount");
+    setIsClient(true);
+    const params = new URLSearchParams(window.location.search);
+    setOrderId(params.get("order_id") || "");
+    setPaymentId(params.get("payment_id") || "");
+    setAmount(params.get("amount") || "");
+  }, []);
 
-    setQuery({ orderId, paymentId, amount });
-  }, [searchParams]);
-
-  // Avoid SSR mismatch during Vercel build
-  if (!query.orderId && !query.paymentId && !query.amount) return null;
+  if (!isClient)
+    return (
+      <main className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading...
+      </main>
+    );
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-purple-50 text-gray-800 p-6">
@@ -29,14 +35,14 @@ export default function PaymentSuccess() {
         <p className="text-gray-600 mb-2">Thank you for shopping with Kokoru 🌸</p>
 
         <div className="text-left mt-4 mb-6 text-sm">
-          <p><strong>Order ID:</strong> {query.orderId}</p>
-          <p><strong>Payment ID:</strong> {query.paymentId}</p>
-          <p><strong>Amount Paid:</strong> ₹{query.amount}</p>
+          {orderId && <p><strong>Order ID:</strong> {orderId}</p>}
+          {paymentId && <p><strong>Payment ID:</strong> {paymentId}</p>}
+          {amount && <p><strong>Amount Paid:</strong> ₹{amount}</p>}
         </div>
 
         <Link
           href="/shop"
-          className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
+          className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
         >
           Continue Shopping
         </Link>
