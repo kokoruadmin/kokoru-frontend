@@ -1,13 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const API_BASE_URL = "http://192.168.1.22:5000";
-
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({ name: "", mobile: "", defaultAddress: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     const token = localStorage.getItem("kokoru_token");

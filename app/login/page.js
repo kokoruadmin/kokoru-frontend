@@ -1,19 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
   const search = useSearchParams();
   const redirectTo = search?.get("redirectTo") || "/shop";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://192.168.1.22:5000/api/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -21,9 +27,11 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem("kokoru_token", data.token);
-        localStorage.setItem("kokoru_user", JSON.stringify(data.user));
-        window.location.href = redirectTo;
+        if (isClient) {
+          localStorage.setItem("kokoru_token", data.token);
+          localStorage.setItem("kokoru_user", JSON.stringify(data.user));
+          window.location.href = redirectTo;
+        }
       } else {
         alert(data.message || "Login failed");
       }
@@ -32,6 +40,9 @@ export default function LoginPage() {
       alert("Login error. See console.");
     }
   };
+
+  // Prevent SSR crash
+  if (!isClient) return null;
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-white">

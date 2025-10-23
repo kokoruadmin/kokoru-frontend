@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const API_BASE_URL = "http://192.168.1.22:5000";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 function formatDate(d) {
   try {
     return new Date(d).toLocaleString();

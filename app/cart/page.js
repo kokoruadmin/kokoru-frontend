@@ -17,6 +17,7 @@ export default function CartPage() {
   const [newAddress, setNewAddress] = useState("");
   const [label, setLabel] = useState("Home");
   const [user, setUser] = useState(null);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const token =
     typeof window !== "undefined"
@@ -30,7 +31,7 @@ useEffect(() => {
   const token = localStorage.getItem("kokoru_token");
   if (!token) return;
 
-  fetch("http://192.168.1.22:5000/api/users/addresses", {
+  fetch(`${API_BASE_URL}/api/users/addresses`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(async (res) => {
@@ -58,7 +59,7 @@ useEffect(() => {
   const token = localStorage.getItem("kokoru_token");
   if (!token) return;
 
-  fetch("http://192.168.1.22:5000/api/users/me", {
+  fetch(`${API_BASE_URL}/api/users/me`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then((res) => res.json())
@@ -81,7 +82,7 @@ const handleAddAddress = async () => {
   if (!newAddress.trim()) return alert("Please enter an address");
   if (!token) return alert("Please log in to save your address.");
 
-  const res = await fetch("http://192.168.1.22:5000/api/users/addresses", {
+  const res = await fetch(`${API_BASE_URL}/api/users/addresses`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -115,7 +116,7 @@ const handleAddAddress = async () => {
     if (!res) return alert("Failed to load Razorpay SDK");
 
     const orderRes = await fetch(
-      "http://192.168.1.22:5000/api/payment/create-order",
+      `${API_BASE_URL}/api/payment/create-order`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,7 +135,7 @@ const handleAddAddress = async () => {
       order_id: order.id,
       handler: async function (response) {
         const verifyRes = await fetch(
-          "http://192.168.1.22:5000/api/payment/verify",
+          `${API_BASE_URL}/api/payment/verify`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

@@ -22,12 +22,13 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const MAX_ITEMS_PER_PRODUCT = product?.maxQuantity || 5;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     if (!id) return;
     const fetchProduct = async () => {
       try {
-        const res = await fetch(`http://192.168.1.22:5000/api/products/${id}`);
+        const res = await fetch(`${API_BASE_URL}/api/products/${id}`);
         const data = await res.json();
         setProduct(data);
 

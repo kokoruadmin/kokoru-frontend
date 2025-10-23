@@ -1,8 +1,13 @@
 // utils/imageHelper.js
 
-// 🟣 Helper to choose correct backend base URL (works for SSR + Android + Desktop)
+// 🟣 Helper to choose correct backend base URL (works for SSR + Android + Production)
 export const getBaseURL = () => {
-  // ✅ Use LAN IP always (your backend’s reachable IP on Wi-Fi)
+  // ✅ Prefer environment variable if provided
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+
+  // 🟡 Fallback to LAN IP (useful in local dev only)
   const LAN_IP = "192.168.1.22";
   const PORT = 5000;
 
@@ -13,17 +18,17 @@ export const getBaseURL = () => {
 
   const { protocol, hostname } = window.location;
 
-  // ✅ If already visiting via LAN (e.g. Android uses 192.168.x.x)
   if (/^192\.168\./.test(hostname) || /^10\./.test(hostname)) {
+    // Android or local Wi-Fi
     return `${protocol}//${hostname}:${PORT}`;
   }
 
-  // ✅ If localhost (desktop dev)
   if (hostname === "localhost" || hostname === "127.0.0.1") {
+    // Desktop development
     return `http://${LAN_IP}:${PORT}`;
   }
 
-  // ✅ Fallback for production deployment
+  // 🌍 Production (e.g., Vercel)
   return `${protocol}//${hostname}`;
 };
 
@@ -41,6 +46,6 @@ export const getImageUrl = (originalUrl) => {
     return `${baseURL}/api/image?url=${encodeURIComponent(originalUrl)}`;
   }
 
-  // ✅ Otherwise, treat as local/static
+  // ✅ Otherwise, treat as local/static path
   return originalUrl;
 };

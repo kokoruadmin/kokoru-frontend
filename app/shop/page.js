@@ -10,12 +10,13 @@ export default function ShopPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const rangeContainerRef = useRef(null);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   // 🟣 Initialize AOS once + fetch products
   useEffect(() => {
     AOS.init({ duration: 800, easing: "ease-in-out", once: true });
 
-    fetch("http://192.168.1.22:5000/api/products")
+    fetch(`${API_BASE_URL}/api/products`)
       .then((res) => res.json())
       .then((data) => setProducts(data))
       .catch((err) => console.error("❌ Error fetching products:", err));

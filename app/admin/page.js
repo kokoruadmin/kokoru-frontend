@@ -12,8 +12,7 @@ import ShareButton from "@/components/ShareButton";
   - Add Product implemented as a Popup modal (supports colors, images per color, sizes with separate stock).
 */
 
-const API_BASE_URL = "http://192.168.1.22:5000";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 function formatDate(d) {
   try {
     return new Date(d).toLocaleString();
