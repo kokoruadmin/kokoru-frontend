@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getImageUrl } from "../../utils/imageHelper";
 import ShareButton from "@/components/ShareButton";
+import { LogOut } from "lucide-react";
 
 
 
@@ -109,7 +110,7 @@ useEffect(() => {
     const user = JSON.parse(userData);
     if (!user.isAdmin) {
       alert("Access denied. Admins only.");
-      window.location.href = "/";
+    window.location.href = "/admin/login";
       return;
     }
   } catch {
@@ -117,6 +118,14 @@ useEffect(() => {
     window.location.href = "/admin/login";
   }
 }, []);
+// 🟣 Logout function
+const handleLogout = () => {
+  if (confirm("Are you sure you want to logout?")) {
+    localStorage.removeItem("kokoru_token");
+    localStorage.removeItem("kokoru_user");
+    window.location.href = "/admin/login";
+  }
+};
 
   useEffect(() => {
     fetchProducts();
@@ -488,6 +497,15 @@ const getStatusBadge = (status) => {
   return (
 <main className="min-h-screen bg-gradient-to-b from-purple-50 to-white text-gray-800 p-3 sm:p-6">
       <h1 className="text-3xl font-bold text-purple-700 mb-6 text-center">Admin Dashboard</h1>
+        {/* 🟣 Logout Button */}
+      <div className="absolute top-5 right-6">
+          <button
+            onClick={handleLogout}
+            className="bg-purple-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-800 transition flex items-center gap-2 shadow-md"
+          >
+            <LogOut size={16} /> Logout
+          </button>
+        </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* left column: tabs & stats */}
