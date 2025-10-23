@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+/* 🌸 Base Theme Variables */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* 🌙 Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ✨ Button Feedback */
+button,
+.button,
+a.button {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+button:active,
+.button:active {
+  transform: scale(0.96);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 💧 Ripple Effect */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  opacity: 0;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* 🌿 Smooth Fade-In */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.18s ease-out;
+}
+
+/* 🩷 Myntra-Style Dual Range Slider */
+.myntra-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: transparent;
+  position: absolute;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Hide native track */
+.myntra-slider::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 6px;
+}
+.myntra-slider::-moz-range-track {
+  background: transparent;
+  height: 6px;
+}
+
+/* 🩷 Slider Thumb */
+.myntra-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ff3f6c;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.25);
+  margin-top: -5px; /* perfectly centered */
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.myntra-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: #e91e63;
+}
+
+/* Firefox */
+.myntra-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ff3f6c;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.myntra-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  background: #e91e63;
+}
+/* ---------- Purple-Themed Dual Range Slider ---------- */
+.range {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  font-family: inherit;
+}
+
+.range-slider {
+  height: 6px;
+  position: relative;
+  background-color: #ede9fe; /* light purple track */
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.range-selected {
+  height: 100%;
+  left: 0%;
+  right: 0%;
+  position: absolute;
+  border-radius: 6px;
+  background: linear-gradient(to right, #8b5cf6, #a855f7);
+  transition: left 0.15s ease, right 0.15s ease;
+}
+
+.range-input {
+  position: relative;
+  margin-top: 8px;
+}
+.range-input input {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  top: -6px;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+}
+
+/* Thumb style */
+.range-input input::-webkit-slider-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background-color: #7c3aed;
+  pointer-events: auto;
+  -webkit-appearance: none;
+  box-shadow: 0 2px 5px rgba(124, 58, 237, 0.3);
+  margin-top: -6px;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.range-input input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background-color: #6d28d9;
+}
+
+.range-input input::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background-color: #7c3aed;
+  pointer-events: auto;
+  box-shadow: 0 2px 5px rgba(124, 58, 237, 0.3);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.range-input input::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  background-color: #6d28d9;
+}
+
+.range-price {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
+  font-weight: 600;
+  color: #4b0082;
+}
+.range-price label {
+  font-size: 0.875rem;
+  color: #6b21a8;
+}
+.range-price input[type="number"] {
+  width: 86px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #ddd6fe;
+  text-align: center;
+  color: #5b21b6;
+  font-weight: 500;
+  background: #faf5ff;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.range-price input[type="number"]:focus {
+  border-color: #8b5cf6;
+}
