@@ -8,12 +8,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
-  const search = useSearchParams();
-  const redirectTo = search?.get("redirectTo") || "/shop";
-  const API_BASE_URL =process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.1.22:5000";
+  const [redirectTo, setRedirectTo] = useState("/shop");
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://kokoru-backend.onrender.com";
 
   useEffect(() => {
     setIsClient(true);
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirectTo");
+    if (redirect) setRedirectTo(redirect);
+   
   }, []);
 
   const handleLogin = async (e) => {
