@@ -98,26 +98,23 @@ const fetchOrders = async () => {
   }
 };
 useEffect(() => {
-  const token = localStorage.getItem("kokoru_token");
-  const userData = localStorage.getItem("kokoru_user");
+  const token = localStorage.getItem("kokoru_admin_token");
+  const user = localStorage.getItem("kokoru_admin_user");
 
-  if (!token || !userData) {
+  if (!token || !user) {
     window.location.href = "/admin/login";
-    return;
-  }
-
-  try {
-    const user = JSON.parse(userData);
-    if (!user.isAdmin) {
-      alert("Access denied. Admins only.");
-    window.location.href = "/admin/login";
-      return;
+  } else {
+    try {
+      const parsed = JSON.parse(user);
+      if (parsed.username !== "admin") {
+        window.location.href = "/admin/login";
+      }
+    } catch {
+      window.location.href = "/admin/login";
     }
-  } catch {
-    localStorage.clear();
-    window.location.href = "/admin/login";
   }
 }, []);
+
 // 🟣 Logout function
 const handleLogout = () => {
   if (confirm("Are you sure you want to logout?")) {
