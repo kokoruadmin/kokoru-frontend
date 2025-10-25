@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getImageUrl } from "../../utils/imageHelper";
-// ShareButton removed from admin page as requested
 import { LogOut } from "lucide-react";
 import InvoicePreview from "../../components/InvoicePreview";
 import ShippingLabel from "../../components/ShippingLabel";
@@ -12,20 +11,13 @@ import ShippingLabel from "../../components/ShippingLabel";
  * AdminPage
  */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
 if (!API_BASE_URL) console.warn("⚠️ Missing NEXT_PUBLIC_API_BASE_URL env variable");
+if (!CLOUD_NAME) console.warn("⚠️ Missing NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME env variable");
+if (!UPLOAD_PRESET) console.warn("⚠️ Missing NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET env variable");
 
-function formatDate(d) {
-  try {
-    return new Date(d).toLocaleString("en-IN");
-  } catch {
-    return d;
-  }
-}
-
-/**
- * Guard against Tailwind styles leaking into html2canvas/jspdf renders.
- * We wrap the preview nodes with this style object.
- */
 const NO_TAILWIND = {
   all: "unset",
   display: "block",
@@ -58,18 +50,18 @@ export default function AdminPage() {
   });
 
   const [addColors, setAddColors] = useState([
-    { name: "", hex: "#ffffff", imageLinks: "", sizes: [{ label: "", stock: 0 }] },
+    { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }] },
   ]);
 
   // Orders
   const [statusModal, setStatusModal] = useState({ open: false, order: null });
   const [filter, setFilter] = useState({ q: "" });
 
-  // Invoice/Label preview modals (single clean entry points)
+  // Invoice/Label preview modals
   const [previewInvoice, setPreviewInvoice] = useState({ open: false, order: null });
   const [previewLabel, setPreviewLabel] = useState({ open: false, order: null });
 
-  // Hidden DOM refs for export/print
+  // Hidden DOM refs for export
   const invoiceRef = useRef(null);
   const labelRef = useRef(null);
 
@@ -175,7 +167,8 @@ export default function AdminPage() {
   useEffect(() => {
     fetchProducts();
     fetchOrders();
-  }, []); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ---------------------- GROUPED PRODUCTS & STATS ---------------------- */
   const grouped = useMemo(() => {
@@ -196,7 +189,7 @@ export default function AdminPage() {
       if (Array.isArray(p.colors) && p.colors.length) {
         for (const c of p.colors) {
           totalVariants += (c.sizes || []).length || 1;
-          for (const s of c.sizes || []) totalStock += Number(s.stock || 0);
+          for (const s of (c.sizes || [])) totalStock += Number(s.stock || 0);
         }
       } else {
         totalVariants += 1;
@@ -208,7 +201,16 @@ export default function AdminPage() {
 
   /* ---------------------- PRODUCT HELPERS (EDIT/ADD/DELETE) ---------------------- */
   const openEditModal = (product) => {
-    setEditingProduct(JSON.parse(JSON.stringify(product)));
+    // Normalize color.images to array
+    const copy = JSON.parse(JSON.stringify(product || {}));
+    if (Array.isArray(copy.colors)) {
+      copy.colors = copy.colors.map((c) => ({
+        ...c,
+        images: Array.isArray(c.images) ? c.images : (c.images ? [c.images] : []),
+        urlsText: "", // for paste box in edit
+      }));
+    }
+    setEditingProduct(copy);
     setActiveTab("products");
   };
 
@@ -218,6 +220,14 @@ export default function AdminPage() {
       // Apply addStock deltas
       if (Array.isArray(editingProduct.colors)) {
         editingProduct.colors.forEach((c) => {
+          // Merge any pasted URLs
+          const pasted = (c.urlsText || "")
+            .split(/[\n,]+/)
+            .map((x) => x.trim())
+            .filter(Boolean);
+          c.images = Array.from(new Set([...(c.images || []), ...pasted]));
+          c.urlsText = "";
+
           c.sizes = (c.sizes || []).map((s) => {
             if (s.addStock) {
               const newStock = Math.max(Number(s.stock || 0) + Number(s.addStock || 0), 0);
@@ -228,14 +238,23 @@ export default function AdminPage() {
         });
       }
       if (editingProduct.addStock) {
-        editingProduct.stock = Math.max(Number(editingProduct.stock || 0) + Number(editingProduct.addStock || 0), 0);
+        editingProduct.stock = Math.max(
+          Number(editingProduct.stock || 0) + Number(editingProduct.addStock || 0),
+          0
+        );
         delete editingProduct.addStock;
+      }
+
+      const payload = { ...editingProduct };
+      // Remove helper fields
+      if (Array.isArray(payload.colors)) {
+        payload.colors = payload.colors.map(({ urlsText, ...rest }) => rest);
       }
 
       const res = await fetch(`${API_BASE_URL}/api/products/${editingProduct._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingProduct),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
@@ -264,24 +283,51 @@ export default function AdminPage() {
   };
 
   // Add product helpers
-  const addColorRow = () => setAddColors((p) => [...p, { name: "", hex: "#ffffff", imageLinks: "", sizes: [{ label: "", stock: 0 }] }]);
+  const addColorRow = () =>
+    setAddColors((p) => [
+      ...p,
+      { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }] },
+    ]);
   const removeAddColor = (i) => setAddColors((p) => p.filter((_, idx) => idx !== i));
-  const addSizeRowForAdd = (ci) => setAddColors((p) => p.map((c, idx) => (idx === ci ? { ...c, sizes: [...(c.sizes || []), { label: "", stock: 0 }] } : c)));
-  const removeSizeRowForAdd = (ci, si) => setAddColors((p) => p.map((c, idx) => (idx === ci ? { ...c, sizes: (c.sizes || []).filter((_, j) => j !== si) } : c)));
+  const addSizeRowForAdd = (ci) =>
+    setAddColors((p) =>
+      p.map((c, idx) =>
+        idx === ci ? { ...c, sizes: [...(c.sizes || []), { label: "", stock: 0 }] } : c
+      )
+    );
+  const removeSizeRowForAdd = (ci, si) =>
+    setAddColors((p) =>
+      p.map((c, idx) =>
+        idx === ci ? { ...c, sizes: (c.sizes || []).filter((_, j) => j !== si) } : c
+      )
+    );
   const resetAddForm = () => {
-    setNewProduct({ name: "", description: "", category: "", price: "", stock: 0, imageUrl: "", colors: [] });
-    setAddColors([{ name: "", hex: "#ffffff", imageLinks: "", sizes: [{ label: "", stock: 0 }] }]);
+    setNewProduct({
+      name: "",
+      description: "",
+      category: "",
+      price: "",
+      stock: 0,
+      imageUrl: "",
+      colors: [],
+    });
+    setAddColors([
+      { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }] },
+    ]);
   };
 
   function buildColorsFromAdd() {
     return addColors
       .map((c) => {
-        const images = (c.imageLinks || "")
-          .toString()
+        const pasted = (c.urlsText || "")
           .split(/[\n,]+/)
           .map((x) => x.trim())
           .filter(Boolean);
-        const sizes = (c.sizes || []).map((s) => ({ label: s.label || "", stock: Number(s.stock || 0) }));
+        const images = Array.from(new Set([...(c.images || []), ...pasted]));
+        const sizes = (c.sizes || []).map((s) => ({
+          label: s.label || "",
+          stock: Number(s.stock || 0),
+        }));
         if (!c.name && images.length === 0 && sizes.length === 0) return null;
         return { name: c.name || "Color", hex: c.hex || "#ffffff", images, sizes };
       })
@@ -360,22 +406,22 @@ export default function AdminPage() {
   /* ---------------------- INVOICE/LABEL: PDF + PRINT (client-only) ---------------------- */
   const exportNodeToPdf = async (node, filename = "document.pdf", { format = "a4", margin = 8 } = {}) => {
     if (!node) return;
-    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
 
-    // Render node to canvas
     const canvas = await html2canvas(node, {
-      scale: 2, // better quality
-      useCORS: true, // in case images
+      scale: 2,
+      useCORS: true,
       backgroundColor: "#ffffff",
     });
     const imgData = canvas.toDataURL("image/png");
 
-    // Create PDF
-    const pdf = new jsPDF({ orientation: "p", unit: "pt", format }); // 72 pt/inch
+    const pdf = new jsPDF({ orientation: "p", unit: "pt", format });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
-    // Fit image into page (keep aspect ratio)
     const x = margin;
     const y = margin;
     const w = pageWidth - margin * 2;
@@ -383,13 +429,11 @@ export default function AdminPage() {
 
     pdf.addImage(imgData, "PNG", x, y, w, h, undefined, "FAST");
 
-    // If content is taller than one page, add extra pages
     let heightLeft = h - (pageHeight - margin * 2);
-    let position = y - heightLeft;
 
     while (heightLeft > 0) {
       pdf.addPage();
-      position = margin - heightLeft;
+      const position = margin - heightLeft;
       pdf.addImage(imgData, "PNG", x, position, w, h, undefined, "FAST");
       heightLeft -= pageHeight - margin * 2;
     }
@@ -400,7 +444,11 @@ export default function AdminPage() {
   const printNode = async (node) => {
     const dataUrl = await (async () => {
       const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(node, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
       return canvas.toDataURL("image/png");
     })();
 
@@ -433,6 +481,33 @@ export default function AdminPage() {
     }
     return arr;
   }, [orders, filter.q]);
+
+  /* ---------------------- IMAGE UPLOAD HELPERS ---------------------- */
+  async function uploadFilesToCloudinary(files) {
+    if (!CLOUD_NAME || !UPLOAD_PRESET) {
+      alert("Cloudinary ENV missing. Set NEXT_PUBLIC_CLOUDINARY_* values.");
+      return [];
+    }
+    const uploaded = [];
+    for (const file of files) {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("upload_preset", UPLOAD_PRESET);
+      // optional: folder by product name (safe fallback)
+      // form.append("folder", "kokoru/products");
+      try {
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
+          method: "POST",
+          body: form,
+        });
+        const json = await res.json();
+        if (json.secure_url) uploaded.push(json.secure_url);
+      } catch (e) {
+        console.error("Cloudinary upload error", e);
+      }
+    }
+    return uploaded;
+  }
 
   /* ---------------------- RENDER ---------------------- */
   return (
@@ -525,7 +600,9 @@ export default function AdminPage() {
 
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100 text-sm">
             <h4 className="font-semibold text-purple-700">Stock Adjust</h4>
-            <p className="text-gray-600 mt-2">Use the edit modal or quick buttons to tweak stock per variant.</p>
+            <p className="text-gray-600 mt-2">
+              Use the edit modal or quick buttons to tweak stock per variant.
+            </p>
           </div>
         </aside>
 
@@ -572,21 +649,31 @@ export default function AdminPage() {
                           </thead>
                           <tbody>
                             {items.map((p) => {
-                              const thumb = getImageUrl(p.colors?.[0]?.images?.[0] || p.imageUrl || "/no-image.jpg");
+                              const thumb = getImageUrl(
+                                p.colors?.[0]?.images?.[0] || p.imageUrl || "/no-image.jpg"
+                              );
                               let totalStock = 0;
                               if (Array.isArray(p.colors) && p.colors.length) {
-                                for (const c of p.colors) for (const s of c.sizes || []) totalStock += Number(s.stock || 0);
+                                for (const c of p.colors)
+                                  for (const s of c.sizes || [])
+                                    totalStock += Number(s.stock || 0);
                               } else totalStock = Number(p.stock || 0);
                               return (
                                 <tr key={p._id} className="border-b hover:bg-white">
                                   <td className="p-2 align-middle">
                                     <div className="flex items-center gap-3">
-                                      <img src={thumb} alt={p.name} className="w-12 h-12 object-cover rounded" />
+                                      <img
+                                        src={thumb}
+                                        alt={p.name}
+                                        className="w-12 h-12 object-cover rounded"
+                                      />
                                     </div>
                                   </td>
                                   <td className="align-middle font-medium">{p.name}</td>
                                   <td className="text-center align-middle">₹{p.price}</td>
-                                  <td className="text-center align-middle">{p.colors?.length ? p.colors.length : 1}</td>
+                                  <td className="text-center align-middle">
+                                    {p.colors?.length ? p.colors.length : 1}
+                                  </td>
                                   <td className="text-center align-middle">{totalStock}</td>
                                   <td className="text-center align-middle">
                                     <button
@@ -659,37 +746,43 @@ export default function AdminPage() {
                           <td className="align-middle">{o.customerName || o.userEmail}</td>
                           <td className="align-middle text-sm whitespace-pre-line text-gray-700">
                             <div className="max-w-xs break-words leading-snug">
-                              <span className="block font-medium text-gray-800">{o.address?.label || "Address"}</span>
+                              <span className="block font-medium text-gray-800">
+                                {o.address?.label || "Address"}
+                              </span>
                               <span className="block">
-                                {o.address?.address?.split(/[,\n]+/)?.map((line, i) => (
-                                  <div key={i}>{line.trim()}</div>
-                                ))}
+                                {o.address?.address
+                                  ?.split(/[,\n]+/)
+                                  ?.map((line, i) => <div key={i}>{line.trim()}</div>)}
                               </span>
                             </div>
                           </td>
                           <td className="align-middle">
-                            {Array.isArray(o.items) ? o.items.map((it) => `${it.name} x${it.quantity}`).join(", ") : ""}
+                            {Array.isArray(o.items)
+                              ? o.items.map((it) => `${it.name} x${it.quantity}`).join(", ")
+                              : ""}
                           </td>
                           <td className="text-center align-middle">₹{o.amount}</td>
-                          <td className="text-center align-middle space-y-2">
-                            <div className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getStatusBadge(o.status)}`}>
+                          <td className="text-center align-middle space-y-1">
+                            <div
+                              className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
+                                o.status
+                              )}`}
+                            >
                               {o.status || "processing"}
                             </div>
 
-                            {/* CLEAN ACTIONS: exactly two solid buttons */}
                             <div className="flex flex-wrap gap-2 justify-center mt-1">
+                              {/* Invoice actions */}
                               <button
                                 onClick={() => setPreviewInvoice({ open: true, order: o })}
-                                className="text-xs px-3 py-1 rounded bg-purple-600 text-white hover:bg-purple-700 shadow-sm"
-                                title="Open invoice preview"
+                                className="text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
                               >
                                 🧾 Invoice
                               </button>
-
+                              {/* Shipping label actions */}
                               <button
                                 onClick={() => setPreviewLabel({ open: true, order: o })}
-                                className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
-                                title="Open shipping label"
+                                className="text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
                               >
                                 🏷️ Label
                               </button>
@@ -802,14 +895,16 @@ export default function AdminPage() {
               />
 
               <div>
-                <h4 className="font-medium text-purple-700 mb-2">Colors & Sizes (optional)</h4>
+                <h4 className="font-medium text-purple-700 mb-2">Colors & Sizes (with images)</h4>
                 {addColors.map((c, ci) => (
-                  <div key={ci} className="p-3 border rounded my-2 bg-gray-50">
-                    <div className="flex gap-2 items-center mb-2">
+                  <div key={ci} className="p-3 border rounded my-2 bg-gray-50 space-y-2">
+                    <div className="flex gap-2 items-center">
                       <input
                         value={c.name}
                         onChange={(e) =>
-                          setAddColors((prev) => prev.map((x, i) => (i === ci ? { ...x, name: e.target.value } : x)))
+                          setAddColors((prev) =>
+                            prev.map((x, i) => (i === ci ? { ...x, name: e.target.value } : x))
+                          )
                         }
                         className="border p-1 rounded w-1/3"
                         placeholder="Color name"
@@ -818,34 +913,103 @@ export default function AdminPage() {
                         type="color"
                         value={c.hex}
                         onChange={(e) =>
-                          setAddColors((prev) => prev.map((x, i) => (i === ci ? { ...x, hex: e.target.value } : x)))
+                          setAddColors((prev) =>
+                            prev.map((x, i) => (i === ci ? { ...x, hex: e.target.value } : x))
+                          )
                         }
                       />
-                      <button type="button" onClick={() => removeAddColor(ci)} className="text-red-600">
+                      <button
+                        type="button"
+                        onClick={() => removeAddColor(ci)}
+                        className="text-red-600 text-sm"
+                      >
                         Remove
                       </button>
                     </div>
 
-<textarea
-  placeholder="Image URLs (one per line or separated by commas)"
-  value={c.imageLinks}
-  onChange={e =>
-    setAddColors(prev =>
-      prev.map((x, i) =>
-        i === ci ? { ...x, imageLinks: e.target.value } : x
-      )
-    )
-  }
-  rows={3}
-  className="w-full border p-2 rounded"
-  style={{ whiteSpace: "pre-wrap" }}
-/>
+                    {/* Uploader */}
+                    <div className="border rounded p-2 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium">Images for {c.name || "Color"}</div>
+                        <label className="text-xs px-2 py-1 rounded bg-purple-600 text-white cursor-pointer">
+                          Upload Images
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            hidden
+                            onChange={async (e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (!files.length) return;
+                              const urls = await uploadFilesToCloudinary(files);
+                              if (!urls.length) return;
+                              setAddColors((prev) =>
+                                prev.map((x, i) =>
+                                  i === ci ? { ...x, images: [...(x.images || []), ...urls] } : x
+                                )
+                              );
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
 
+                      {/* Previews */}
+                      <div className="flex flex-wrap gap-2">
+                        {(c.images || []).map((url, idx) => (
+                          <div key={idx} className="relative">
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAddColors((prev) =>
+                                  prev.map((x, i) =>
+                                    i === ci
+                                      ? { ...x, images: x.images.filter((_, j) => j !== idx) }
+                                      : x
+                                  )
+                                )
+                              }
+                              className="absolute -top-2 -right-2 bg-white border rounded-full w-6 h-6 text-xs"
+                              title="Remove"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
 
+                      {/* Paste URLs fallback */}
+                      <textarea
+                        value={c.urlsText}
+                        onChange={(e) =>
+                          setAddColors((prev) =>
+                            prev.map((x, i) =>
+                              i === ci ? { ...x, urlsText: e.target.value } : x
+                            )
+                          )
+                        }
+                        placeholder="Or paste image URLs (comma or newline separated)"
+                        className="w-full border p-2 rounded mt-2 text-xs"
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Sizes */}
                     <div className="text-sm">
                       <div className="flex gap-2 items-center mb-1">
                         <div className="text-xs">Sizes:</div>
-                        <button type="button" onClick={() => addSizeRowForAdd(ci)} className="text-xs text-purple-700">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            addSizeRowForAdd(ci)
+                          }
+                          className="text-xs text-purple-700"
+                        >
                           + Add size
                         </button>
                       </div>
@@ -880,7 +1044,9 @@ export default function AdminPage() {
                                     ? {
                                         ...x,
                                         sizes: x.sizes.map((sz, j) =>
-                                          j === si ? { ...sz, stock: parseInt(e.target.value || 0) } : sz
+                                          j === si
+                                            ? { ...sz, stock: parseInt(e.target.value || 0) }
+                                            : sz
                                         ),
                                       }
                                     : x
@@ -905,7 +1071,11 @@ export default function AdminPage() {
                 ))}
 
                 <div className="mt-2">
-                  <button type="button" onClick={addColorRow} className="text-purple-700 text-sm">
+                  <button
+                    type="button"
+                    onClick={addColorRow}
+                    className="text-purple-700 text-sm"
+                  >
                     + Add Color
                   </button>
                 </div>
@@ -947,31 +1117,47 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input
                   value={editingProduct.name || ""}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, name: e.target.value })
+                  }
                   className="border p-2 rounded"
                 />
                 <input
                   value={editingProduct.category || ""}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, category: e.target.value })
+                  }
                   className="border p-2 rounded"
                 />
                 <input
                   type="number"
                   value={editingProduct.price || 0}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value || 0) })}
+                  onChange={(e) =>
+                    setEditingProduct({
+                      ...editingProduct,
+                      price: parseFloat(e.target.value || 0),
+                    })
+                  }
                   className="border p-2 rounded"
                 />
                 <input
                   type="number"
                   value={editingProduct.maxOrder || 10}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, maxOrder: parseInt(e.target.value || 0) })}
+                  onChange={(e) =>
+                    setEditingProduct({
+                      ...editingProduct,
+                      maxOrder: parseInt(e.target.value || 0),
+                    })
+                  }
                   className="border p-2 rounded"
                 />
               </div>
 
               <textarea
                 value={editingProduct.description || ""}
-                onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                onChange={(e) =>
+                  setEditingProduct({ ...editingProduct, description: e.target.value })
+                }
                 className="w-full border p-2 rounded"
                 rows={3}
               />
@@ -979,7 +1165,7 @@ export default function AdminPage() {
               <div>
                 <h4 className="font-medium text-purple-700">Colors & Sizes</h4>
                 {(editingProduct.colors || []).map((c, ci) => (
-                  <div key={ci} className="p-3 border rounded my-2 bg-gray-50">
+                  <div key={ci} className="p-3 border rounded my-2 bg-gray-50 space-y-2">
                     <div className="flex gap-2 items-center">
                       <input
                         value={c.name || ""}
@@ -999,21 +1185,6 @@ export default function AdminPage() {
                           setEditingProduct(cp);
                         }}
                       />
-<textarea
-  value={(c.images || []).join("\n")}
-  onChange={(e) => {
-    const cp = { ...editingProduct };
-    cp.colors[ci].images = e.target.value
-      .split(/[\n,]+/)
-      .map(x => x.trim())
-      .filter(Boolean);
-    setEditingProduct(cp);
-  }}
-  rows={3}
-  className="border p-2 rounded w-full"
-  style={{ whiteSpace: "pre-wrap" }}
-/>
-
                       <button
                         onClick={() => {
                           const cp = { ...editingProduct };
@@ -1026,6 +1197,77 @@ export default function AdminPage() {
                       </button>
                     </div>
 
+                    {/* Uploader */}
+                    <div className="border rounded p-2 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium">
+                          Images for {c.name || `Color ${ci + 1}`}
+                        </div>
+                        <label className="text-xs px-2 py-1 rounded bg-purple-600 text-white cursor-pointer">
+                          Upload Images
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            hidden
+                            onChange={async (e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (!files.length) return;
+                              const urls = await uploadFilesToCloudinary(files);
+                              if (!urls.length) return;
+                              const cp = { ...editingProduct };
+                              cp.colors[ci].images = Array.from(
+                                new Set([...(cp.colors[ci].images || []), ...urls])
+                              );
+                              setEditingProduct(cp);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Previews */}
+                      <div className="flex flex-wrap gap-2">
+                        {(c.images || []).map((url, idx) => (
+                          <div key={idx} className="relative">
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cp = { ...editingProduct };
+                                cp.colors[ci].images = cp.colors[ci].images.filter(
+                                  (_, j) => j !== idx
+                                );
+                                setEditingProduct(cp);
+                              }}
+                              className="absolute -top-2 -right-2 bg-white border rounded-full w-6 h-6 text-xs"
+                              title="Remove"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Paste URLs fallback */}
+                      <textarea
+                        value={c.urlsText || ""}
+                        onChange={(e) => {
+                          const cp = { ...editingProduct };
+                          cp.colors[ci].urlsText = e.target.value;
+                          setEditingProduct(cp);
+                        }}
+                        placeholder="Or paste image URLs (comma or newline separated)"
+                        className="w-full border p-2 rounded mt-2 text-xs"
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Sizes */}
                     <div className="mt-2 text-sm">
                       <div className="flex gap-2 items-center mb-1">
                         <div className="text-xs">Sizes:</div>
@@ -1092,7 +1334,7 @@ export default function AdminPage() {
                   onClick={() => {
                     const cp = { ...editingProduct };
                     if (!cp.colors) cp.colors = [];
-                    cp.colors.push({ name: "", hex: "#ffffff", images: [], sizes: [] });
+                    cp.colors.push({ name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [] });
                     setEditingProduct(cp);
                   }}
                   className="text-sm text-purple-700"
@@ -1107,7 +1349,9 @@ export default function AdminPage() {
                   <input
                     type="number"
                     value={editingProduct.stock || 0}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value || 0) })}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value || 0) })
+                    }
                     className="border p-1 rounded w-32"
                   />
                   <input
@@ -1115,7 +1359,10 @@ export default function AdminPage() {
                     placeholder="+Add"
                     value={editingProduct.addStock || ""}
                     onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, addStock: parseInt(e.target.value || 0) })
+                      setEditingProduct({
+                        ...editingProduct,
+                        addStock: parseInt(e.target.value || 0),
+                      })
                     }
                     className="border p-1 rounded w-32"
                   />
@@ -1134,7 +1381,10 @@ export default function AdminPage() {
                 >
                   Cancel
                 </button>
-                <button onClick={saveEditing} className="bg-purple-600 text-white px-4 py-2 rounded">
+                <button
+                  onClick={saveEditing}
+                  className="bg-purple-600 text-white px-4 py-2 rounded"
+                >
                   Save changes
                 </button>
               </div>
@@ -1147,7 +1397,9 @@ export default function AdminPage() {
       {statusModal.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-96">
-            <h3 className="text-lg font-semibold text-purple-700 mb-2 text-center">Update Order Status</h3>
+            <h3 className="text-lg font-semibold text-purple-700 mb-2 text-center">
+              Update Order Status
+            </h3>
             <p className="text-sm text-gray-600 mb-4 text-center">
               <strong>Order ID:</strong> {statusModal.order._id}
             </p>
@@ -1162,7 +1414,9 @@ export default function AdminPage() {
               </span>
             </div>
 
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select New Status:</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Select New Status:
+            </label>
             <select
               id="statusSelect"
               defaultValue={statusModal.order.status || "processing"}
@@ -1198,24 +1452,27 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ---------- Invoice Preview Modal (single entry) ---------- */}
+      {/* ---------- Invoice Preview Modal ---------- */}
       {previewInvoice.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl p-4 w-[860px] max-w-[95vw]">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold text-purple-700">Invoice</h3>
+              <h3 className="text-lg font-semibold text-purple-700">Invoice Preview</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() =>
-                    exportNodeToPdf(invoiceRef.current, `invoice-${previewInvoice.order?._id}.pdf`)
+                    exportNodeToPdf(
+                      invoiceRef.current,
+                      `invoice-${previewInvoice.order?._id}.pdf`
+                    )
                   }
-                  className="px-3 py-1 text-sm rounded bg-purple-600 text-white hover:bg-purple-700"
+                  className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
                 >
-                  ⬇️ Download PDF
+                  ⬇️ PDF
                 </button>
                 <button
                   onClick={() => printNode(invoiceRef.current)}
-                  className="px-3 py-1 text-sm rounded bg-gray-800 text-white hover:bg-gray-900"
+                  className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
                 >
                   🖨️ Print
                 </button>
@@ -1242,24 +1499,28 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ---------- Shipping Label Modal (single entry) ---------- */}
+      {/* ---------- Shipping Label Modal ---------- */}
       {previewLabel.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl p-4 w-[460px] max-w-[95vw]">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold text-blue-700">Shipping Label</h3>
+              <h3 className="text-lg font-semibold text-purple-700">Shipping Label</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() =>
-                    exportNodeToPdf(labelRef.current, `label-${previewLabel.order?._id}.pdf`, { format: "a6" })
+                    exportNodeToPdf(
+                      labelRef.current,
+                      `label-${previewLabel.order?._id}.pdf`,
+                      { format: "a6" }
+                    )
                   }
-                  className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+                  className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
                 >
-                  ⬇️ Download PDF
+                  ⬇️ PDF
                 </button>
                 <button
                   onClick={() => printNode(labelRef.current)}
-                  className="px-3 py-1 text-sm rounded bg-gray-800 text-white hover:bg-gray-900"
+                  className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
                 >
                   🖨️ Print
                 </button>
@@ -1276,7 +1537,7 @@ export default function AdminPage() {
               <div ref={labelRef} style={NO_TAILWIND}>
                 <ShippingLabel
                   order={previewLabel.order}
-                  brandGroup={pickBrandByCategory(previewLabel.order)} // Kokoru Studio / Kokoru Crafts
+                  brandGroup={pickBrandByCategory(previewLabel.order)}
                   senderAddress="Main Office, Kokoru Brand PVT LMT, Kerala"
                   senderPhone="9113435126"
                   senderCityState="Kollam, Kerala"
@@ -1295,11 +1556,9 @@ export default function AdminPage() {
 function pickBrandByCategory(order) {
   const items = Array.isArray(order?.items) ? order.items : [];
   const cats = items.map((i) => (i.category || "").toLowerCase());
-  // Basic heuristic you can tweak anytime:
   if (cats.some((c) => c.includes("jewel"))) return "Kokoru Crafts";
   if (cats.some((c) => c.includes("tea"))) return "Kokoru Crafts";
   if (cats.some((c) => c.includes("cloth") || c.includes("apparel"))) return "Kokoru Studio";
-  // default
   return "Kokoru Studio";
 }
 
