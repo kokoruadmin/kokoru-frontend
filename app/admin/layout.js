@@ -19,28 +19,14 @@ export const metadata = {
 
 export default function AdminLayout({ children }) {
   return (
-    <html
-      lang="en"
-      className="min-h-screen w-full bg-gradient-to-br from-purple-50 via-pink-50 to-white text-gray-800"
-      style={{
-        margin: 0,
-        padding: 0,
-        backgroundColor: "rgb(250, 245, 255)", // fallback
-      }}
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex justify-center items-start`}
-        style={{
-          background: "transparent",
-          margin: 0,
-          padding: 0,
-          width: "100%",
-          overflowX: "hidden",
-        }}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased w-full min-h-screen flex justify-center bg-[#faf7ff]`}
         suppressHydrationWarning
       >
-        <main className="w-full max-w-7xl p-6">{children}</main>
+    <main className="min-h-screen bg-[#faf7ff] p-4 sm:p-6 text-gray-800">
+          {children}
+        </main>
       </body>
     </html>
   );
