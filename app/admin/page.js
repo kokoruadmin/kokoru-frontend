@@ -668,29 +668,42 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar */}
         <aside className="col-span-1 space-y-4">
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab("products")}
-                className={`px-3 py-1 rounded ${activeTab === "products" ? "bg-purple-600 text-white" : "bg-gray-100"}`}
-              >
-                Products
-              </button>
-              <button
-                onClick={() => setActiveTab("orders")}
-                className={`px-3 py-1 rounded ${activeTab === "orders" ? "bg-purple-600 text-white" : "bg-gray-100"}`}
-              >
-                Orders
-              </button>
-              <button
-                onClick={() => setActiveTab("stats")}
-                className={`px-3 py-1 rounded ${activeTab === "stats" ? "bg-purple-600 text-white" : "bg-gray-100"}`}
-              >
-                Stats
-              </button>
-            </div>
-          </div>
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100">
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setActiveTab("products")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                activeTab === "products"
+                  ? "bg-purple-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Products
+            </button>
 
+            <button
+              onClick={() => setActiveTab("orders")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                activeTab === "orders"
+                  ? "bg-purple-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Orders
+            </button>
+
+            <button
+              onClick={() => setActiveTab("stats")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                activeTab === "stats"
+                  ? "bg-purple-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Stats
+            </button>
+          </div>
+        </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100">
             <h3 className="font-semibold text-purple-700">Quick Stats</h3>
             {!stats ? (
