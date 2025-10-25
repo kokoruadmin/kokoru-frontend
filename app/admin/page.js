@@ -826,17 +826,21 @@ export default function AdminPage() {
                       </button>
                     </div>
 
-                    <textarea
-                      placeholder="Image URLs (comma or newline separated)"
-                      value={c.imageLinks}
-                      onChange={(e) =>
-                        setAddColors((prev) =>
-                          prev.map((x, i) => (i === ci ? { ...x, imageLinks: e.target.value } : x))
-                        )
-                      }
-                      rows={2}
-                      className="w-full border p-2 rounded mb-2"
-                    />
+<textarea
+  placeholder="Image URLs (one per line or separated by commas)"
+  value={c.imageLinks}
+  onChange={e =>
+    setAddColors(prev =>
+      prev.map((x, i) =>
+        i === ci ? { ...x, imageLinks: e.target.value } : x
+      )
+    )
+  }
+  rows={3}
+  className="w-full border p-2 rounded"
+  style={{ whiteSpace: "pre-wrap" }}
+/>
+
 
                     <div className="text-sm">
                       <div className="flex gap-2 items-center mb-1">
@@ -995,18 +999,21 @@ export default function AdminPage() {
                           setEditingProduct(cp);
                         }}
                       />
-                      <input
-                        value={(c.images || []).join(", ")}
-                        onChange={(e) => {
-                          const cp = { ...editingProduct };
-                          cp.colors[ci].images = e.target.value
-                            .split(/[\n,]+/)
-                            .map((x) => x.trim())
-                            .filter(Boolean);
-                          setEditingProduct(cp);
-                        }}
-                        className="border p-1 rounded flex-1"
-                      />
+<textarea
+  value={(c.images || []).join("\n")}
+  onChange={(e) => {
+    const cp = { ...editingProduct };
+    cp.colors[ci].images = e.target.value
+      .split(/[\n,]+/)
+      .map(x => x.trim())
+      .filter(Boolean);
+    setEditingProduct(cp);
+  }}
+  rows={3}
+  className="border p-2 rounded w-full"
+  style={{ whiteSpace: "pre-wrap" }}
+/>
+
                       <button
                         onClick={() => {
                           const cp = { ...editingProduct };
