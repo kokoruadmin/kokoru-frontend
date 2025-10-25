@@ -8,7 +8,7 @@ import InvoicePreview from "../../components/InvoicePreview";
 import ShippingLabel from "../../components/ShippingLabel";
 
 /**
- * AdminPage
+ * AdminPage — with Cloudinary uploads (progress) for Add & Edit product
  */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -18,6 +18,7 @@ if (!API_BASE_URL) console.warn("⚠️ Missing NEXT_PUBLIC_API_BASE_URL env var
 if (!CLOUD_NAME) console.warn("⚠️ Missing NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME env variable");
 if (!UPLOAD_PRESET) console.warn("⚠️ Missing NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET env variable");
 
+/** Turn off Tailwind in captured nodes (for html2canvas/jspdf correctness) */
 const NO_TAILWIND = {
   all: "unset",
   display: "block",
@@ -49,8 +50,9 @@ export default function AdminPage() {
     colors: [],
   });
 
+  // ADD: each color has { name, hex, images[], urlsText, sizes[], uploads[] }
   const [addColors, setAddColors] = useState([
-    { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }] },
+    { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }], uploads: [] },
   ]);
 
   // Orders
@@ -201,13 +203,14 @@ export default function AdminPage() {
 
   /* ---------------------- PRODUCT HELPERS (EDIT/ADD/DELETE) ---------------------- */
   const openEditModal = (product) => {
-    // Normalize color.images to array
+    // Normalize color.images to array + add uploads[] and urlsText helper
     const copy = JSON.parse(JSON.stringify(product || {}));
     if (Array.isArray(copy.colors)) {
       copy.colors = copy.colors.map((c) => ({
         ...c,
         images: Array.isArray(c.images) ? c.images : (c.images ? [c.images] : []),
-        urlsText: "", // for paste box in edit
+        urlsText: "",
+        uploads: [], // for progress cards
       }));
     }
     setEditingProduct(copy);
@@ -217,10 +220,9 @@ export default function AdminPage() {
   const saveEditing = async () => {
     if (!editingProduct || !editingProduct._id) return alert("No product loaded");
     try {
-      // Apply addStock deltas
+      // Apply addStock deltas + merge pasted URLs
       if (Array.isArray(editingProduct.colors)) {
         editingProduct.colors.forEach((c) => {
-          // Merge any pasted URLs
           const pasted = (c.urlsText || "")
             .split(/[\n,]+/)
             .map((x) => x.trim())
@@ -248,7 +250,7 @@ export default function AdminPage() {
       const payload = { ...editingProduct };
       // Remove helper fields
       if (Array.isArray(payload.colors)) {
-        payload.colors = payload.colors.map(({ urlsText, ...rest }) => rest);
+        payload.colors = payload.colors.map(({ urlsText, uploads, ...rest }) => rest);
       }
 
       const res = await fetch(`${API_BASE_URL}/api/products/${editingProduct._id}`, {
@@ -286,7 +288,7 @@ export default function AdminPage() {
   const addColorRow = () =>
     setAddColors((p) => [
       ...p,
-      { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }] },
+      { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }], uploads: [] },
     ]);
   const removeAddColor = (i) => setAddColors((p) => p.filter((_, idx) => idx !== i));
   const addSizeRowForAdd = (ci) =>
@@ -312,7 +314,7 @@ export default function AdminPage() {
       colors: [],
     });
     setAddColors([
-      { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }] },
+      { name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [{ label: "", stock: 0 }], uploads: [] },
     ]);
   };
 
@@ -482,31 +484,155 @@ export default function AdminPage() {
     return arr;
   }, [orders, filter.q]);
 
-  /* ---------------------- IMAGE UPLOAD HELPERS ---------------------- */
-  async function uploadFilesToCloudinary(files) {
-    if (!CLOUD_NAME || !UPLOAD_PRESET) {
-      alert("Cloudinary ENV missing. Set NEXT_PUBLIC_CLOUDINARY_* values.");
-      return [];
-    }
-    const uploaded = [];
-    for (const file of files) {
+  /* ---------------------- CLOUDINARY UPLOAD (WITH PROGRESS) ---------------------- */
+  function uploadSingleFileWithProgress(file, onProgress) {
+    return new Promise((resolve, reject) => {
+      if (!CLOUD_NAME || !UPLOAD_PRESET) {
+        reject(new Error("Cloudinary ENV missing"));
+        return;
+      }
+      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`;
+      const xhr = new XMLHttpRequest();
       const form = new FormData();
       form.append("file", file);
       form.append("upload_preset", UPLOAD_PRESET);
-      // optional: folder by product name (safe fallback)
+      // Optional: folder
       // form.append("folder", "kokoru/products");
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable && typeof onProgress === "function") {
+          onProgress(Math.round((e.loaded * 100) / e.total));
+        }
+      });
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 4) {
+          try {
+            const res = JSON.parse(xhr.responseText || "{}");
+            if (xhr.status >= 200 && xhr.status < 300 && res.secure_url) {
+              resolve(res.secure_url);
+            } else {
+              reject(new Error(res.error?.message || "Upload failed"));
+            }
+          } catch {
+            reject(new Error("Upload failed"));
+          }
+        }
+      };
+      xhr.open("POST", url);
+      xhr.send(form);
+    });
+  }
+
+  /** Add modal: upload files for color index `ci` */
+  async function addModalUploadFiles(ci, files) {
+    if (!files?.length) return;
+    setAddColors((prev) =>
+      prev.map((c, i) =>
+        i === ci
+          ? {
+              ...c,
+              uploads: [
+                ...c.uploads,
+                ...files.map((f) => ({ name: f.name, progress: 0, status: "uploading", url: "" })),
+              ],
+            }
+          : c
+      )
+    );
+
+    for (let idx = 0; idx < files.length; idx++) {
+      const file = files[idx];
       try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
-          method: "POST",
-          body: form,
+        const url = await uploadSingleFileWithProgress(file, (pct) => {
+          setAddColors((prev) =>
+            prev.map((c, i) =>
+              i === ci
+                ? {
+                    ...c,
+                    uploads: c.uploads.map((u, j) =>
+                      j === c.uploads.length - files.length + idx ? { ...u, progress: pct } : u
+                    ),
+                  }
+                : c
+            )
+          );
         });
-        const json = await res.json();
-        if (json.secure_url) uploaded.push(json.secure_url);
+
+        setAddColors((prev) =>
+          prev.map((c, i) =>
+            i === ci
+              ? {
+                  ...c,
+                  images: Array.from(new Set([...(c.images || []), url])),
+                  uploads: c.uploads.map((u, j) =>
+                    j === c.uploads.length - files.length + idx ? { ...u, progress: 100, status: "done", url } : u
+                  ),
+                }
+              : c
+          )
+        );
       } catch (e) {
-        console.error("Cloudinary upload error", e);
+        console.error("Upload error", e);
+        setAddColors((prev) =>
+          prev.map((c, i) =>
+            i === ci
+              ? {
+                  ...c,
+                  uploads: c.uploads.map((u, j) =>
+                    j === c.uploads.length - files.length + idx ? { ...u, status: "error" } : u
+                  ),
+                }
+              : c
+          )
+        );
       }
     }
-    return uploaded;
+  }
+
+  /** Edit modal: upload files for color index `ci` of editingProduct */
+  async function editModalUploadFiles(ci, files) {
+    if (!files?.length || !editingProduct) return;
+    setEditingProduct((prev) => {
+      const cp = { ...prev };
+      cp.colors[ci].uploads = [
+        ...(cp.colors[ci].uploads || []),
+        ...files.map((f) => ({ name: f.name, progress: 0, status: "uploading", url: "" })),
+      ];
+      return cp;
+    });
+
+    for (let idx = 0; idx < files.length; idx++) {
+      const file = files[idx];
+      try {
+        const url = await uploadSingleFileWithProgress(file, (pct) => {
+          setEditingProduct((prev) => {
+            const cp = { ...prev };
+            const uploads = cp.colors[ci].uploads;
+            const baseIndex = uploads.length - files.length;
+            uploads[baseIndex + idx] = { ...uploads[baseIndex + idx], progress: pct };
+            return cp;
+          });
+        });
+
+        setEditingProduct((prev) => {
+          const cp = { ...prev };
+          cp.colors[ci].images = Array.from(new Set([...(cp.colors[ci].images || []), url]));
+          const uploads = cp.colors[ci].uploads;
+          const baseIndex = uploads.length - files.length;
+          uploads[baseIndex + idx] = { ...uploads[baseIndex + idx], progress: 100, status: "done", url };
+          return cp;
+        });
+      } catch (e) {
+        console.error("Upload error", e);
+        setEditingProduct((prev) => {
+          const cp = { ...prev };
+          const uploads = cp.colors[ci].uploads;
+          const baseIndex = uploads.length - files.length;
+          uploads[baseIndex + idx] = { ...uploads[baseIndex + idx], status: "error" };
+          return cp;
+        });
+      }
+    }
   }
 
   /* ---------------------- RENDER ---------------------- */
@@ -571,18 +697,10 @@ export default function AdminPage() {
               <p className="text-sm text-gray-500">No data</p>
             ) : (
               <ul className="mt-3 text-sm space-y-1">
-                <li>
-                  Total Products: <strong>{stats.totalProducts}</strong>
-                </li>
-                <li>
-                  Total Variants: <strong>{stats.totalVariants}</strong>
-                </li>
-                <li>
-                  Total Stock: <strong>{stats.totalStock}</strong>
-                </li>
-                <li>
-                  Orders: <strong>{orders.length}</strong>
-                </li>
+                <li>Total Products: <strong>{stats.totalProducts}</strong></li>
+                <li>Total Variants: <strong>{stats.totalVariants}</strong></li>
+                <li>Total Stock: <strong>{stats.totalStock}</strong></li>
+                <li>Orders: <strong>{orders.length}</strong></li>
               </ul>
             )}
             <div className="mt-3">
@@ -600,9 +718,7 @@ export default function AdminPage() {
 
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100 text-sm">
             <h4 className="font-semibold text-purple-700">Stock Adjust</h4>
-            <p className="text-gray-600 mt-2">
-              Use the edit modal or quick buttons to tweak stock per variant.
-            </p>
+            <p className="text-gray-600 mt-2">Use the edit modal or quick buttons to tweak stock per variant.</p>
           </div>
         </aside>
 
@@ -941,18 +1057,36 @@ export default function AdminPage() {
                             onChange={async (e) => {
                               const files = Array.from(e.target.files || []);
                               if (!files.length) return;
-                              const urls = await uploadFilesToCloudinary(files);
-                              if (!urls.length) return;
-                              setAddColors((prev) =>
-                                prev.map((x, i) =>
-                                  i === ci ? { ...x, images: [...(x.images || []), ...urls] } : x
-                                )
-                              );
+                              await addModalUploadFiles(ci, files);
                               e.target.value = "";
                             }}
                           />
                         </label>
                       </div>
+
+                      {/* Progress Cards */}
+                      {(c.uploads || []).length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                          {c.uploads.map((u, i) => (
+                            <div key={i} className="border rounded p-2 bg-gray-50">
+                              <div className="text-xs font-medium truncate">{u.name}</div>
+                              <div className="h-2 rounded bg-gray-200 mt-1 overflow-hidden">
+                                <div
+                                  className="h-2 bg-purple-600"
+                                  style={{ width: `${u.progress || 0}%` }}
+                                />
+                              </div>
+                              <div className="text-[11px] mt-1 text-gray-600">
+                                {u.status === "done"
+                                  ? "Completed"
+                                  : u.status === "error"
+                                  ? "Failed"
+                                  : `Uploading… ${u.progress || 0}%`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Previews */}
                       <div className="flex flex-wrap gap-2">
@@ -1005,9 +1139,7 @@ export default function AdminPage() {
                         <div className="text-xs">Sizes:</div>
                         <button
                           type="button"
-                          onClick={() =>
-                            addSizeRowForAdd(ci)
-                          }
+                          onClick={() => addSizeRowForAdd(ci)}
                           className="text-xs text-purple-700"
                         >
                           + Add size
@@ -1197,7 +1329,7 @@ export default function AdminPage() {
                       </button>
                     </div>
 
-                    {/* Uploader */}
+                    {/* Uploader with progress */}
                     <div className="border rounded p-2 bg-white">
                       <div className="flex items-center justify-between mb-2">
                         <div className="text-sm font-medium">
@@ -1213,18 +1345,35 @@ export default function AdminPage() {
                             onChange={async (e) => {
                               const files = Array.from(e.target.files || []);
                               if (!files.length) return;
-                              const urls = await uploadFilesToCloudinary(files);
-                              if (!urls.length) return;
-                              const cp = { ...editingProduct };
-                              cp.colors[ci].images = Array.from(
-                                new Set([...(cp.colors[ci].images || []), ...urls])
-                              );
-                              setEditingProduct(cp);
+                              await editModalUploadFiles(ci, files);
                               e.target.value = "";
                             }}
                           />
                         </label>
                       </div>
+
+                      {(c.uploads || []).length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                          {c.uploads.map((u, i) => (
+                            <div key={i} className="border rounded p-2 bg-gray-50">
+                              <div className="text-xs font-medium truncate">{u.name}</div>
+                              <div className="h-2 rounded bg-gray-200 mt-1 overflow-hidden">
+                                <div
+                                  className="h-2 bg-purple-600"
+                                  style={{ width: `${u.progress || 0}%` }}
+                                />
+                              </div>
+                              <div className="text-[11px] mt-1 text-gray-600">
+                                {u.status === "done"
+                                  ? "Completed"
+                                  : u.status === "error"
+                                  ? "Failed"
+                                  : `Uploading… ${u.progress || 0}%`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Previews */}
                       <div className="flex flex-wrap gap-2">
@@ -1334,7 +1483,7 @@ export default function AdminPage() {
                   onClick={() => {
                     const cp = { ...editingProduct };
                     if (!cp.colors) cp.colors = [];
-                    cp.colors.push({ name: "", hex: "#ffffff", images: [], urlsText: "", sizes: [] });
+                    cp.colors.push({ name: "", hex: "#ffffff", images: [], urlsText: "", uploads: [], sizes: [] });
                     setEditingProduct(cp);
                   }}
                   className="text-sm text-purple-700"
