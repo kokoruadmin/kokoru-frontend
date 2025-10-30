@@ -469,36 +469,37 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
             </div>
           </details>
 
-          {/* Buttons */}
-          <div className="mt-6 flex flex-col sm:flex-row gap-4 items-center">
-            <button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold ${
-                isOutOfStock
-                  ? "bg-gray-400 text-gray-200"
-                  : "bg-purple-600 hover:bg-purple-700 text-white"
-              }`}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              {isOutOfStock ? "Out of Stock" : "Add to Bag"}
-            </button>
+{/* Buttons - visible only on desktop */}
+<div className="hidden md:flex mt-6 flex-col sm:flex-row gap-4 items-center">
+  <button
+    onClick={handleAddToCart}
+    disabled={isOutOfStock}
+    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold shadow-sm transition-all duration-200 ${
+      isOutOfStock
+        ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+        : "bg-purple-600 hover:bg-purple-700 active:scale-95 text-white"
+    }`}
+  >
+    <ShoppingCart className="w-5 h-5" />
+    {isOutOfStock ? "Out of Stock" : "Add to Bag"}
+  </button>
 
-            <button
-              onClick={handleBuyNow}
-              disabled={isOutOfStock}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold ${
-                isOutOfStock
-                  ? "bg-gray-400 text-gray-200"
-                  : "bg-pink-600 hover:bg-pink-700 text-white"
-              }`}
-            >
-              <Zap className="w-5 h-5" />
-              Buy Now
-            </button>
+  <button
+    onClick={handleBuyNow}
+    disabled={isOutOfStock}
+    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold shadow-sm transition-all duration-200 ${
+      isOutOfStock
+        ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+        : "bg-pink-600 hover:bg-pink-700 active:scale-95 text-white"
+    }`}
+  >
+    <Zap className="w-5 h-5" />
+    Buy Now
+  </button>
 
-            <ShareButton product={product} />
-          </div>
+  <ShareButton product={product} />
+</div>
+
 
           <button
             onClick={() => router.push("/shop")}
