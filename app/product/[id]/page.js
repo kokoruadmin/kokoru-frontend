@@ -217,40 +217,61 @@ export default function ProductPage() {
       {/* Product details container */}
       <div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full flex flex-col md:flex-row gap-6">
 
-      {/* Left - Images (No Swiper, Clickable Thumbnails) */}
-{/* Left - Images (Collage Style) */}
+{/* Left - Responsive Product Images */}
 <div className="md:w-1/2 w-full">
-  <div className="grid grid-cols-3 grid-rows-2 gap-2 rounded-xl overflow-hidden">
-    {/* Large main image (takes 2x2 space on larger screens) */}
-    <div className="col-span-3 md:col-span-2 row-span-2 relative bg-gray-100 rounded-lg overflow-hidden">
-      <Image
-        src={getImageUrl(selectedImage || images[0])}
-        alt={product.name}
-        fill
-        className="object-cover transition-transform duration-300 hover:scale-105"
-        priority
-      />
-      {/* 🔍 Optional zoom or expand icon */}
-      <button
-        onClick={() => setLightboxOpen(true)}
-        className="absolute bottom-3 right-3 bg-white/80 rounded-full p-2 shadow hover:scale-105 transition"
-        title="View larger"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-700">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5V6.75A2.25 2.25 0 0012.75 4.5h-6A2.25 2.25 0 004.5 6.75v6A2.25 2.25 0 006.75 15H10.5m2.25 0h4.5A2.25 2.25 0 0019.5 12.75v-6A2.25 2.25 0 0017.25 4.5h-6A2.25 2.25 0 009 6.75v4.5" />
-        </svg>
-      </button>
-    </div>
+  {/* 🖼️ Large main image */}
+  <div className="relative w-full h-[420px] bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center">
+    <Image
+      src={getImageUrl(selectedImage || images[0])}
+      alt={product.name}
+      fill
+      className="object-cover rounded-xl"
+      priority
+    />
 
-    {/* Thumbnail images */}
+    {/* 🔍 Expand button */}
+    <button
+      onClick={() => setLightboxOpen(true)}
+      className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow hover:scale-105 transition"
+      title="View larger"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-700">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5V6.75A2.25 2.25 0 0012.75 4.5h-6A2.25 2.25 0 004.5 6.75v6A2.25 2.25 0 006.75 15H10.5m2.25 0h4.5A2.25 2.25 0 0019.5 12.75v-6A2.25 2.25 0 0017.25 4.5h-6A2.25 2.25 0 009 6.75v4.5" />
+      </svg>
+    </button>
+  </div>
+
+  {/* 🧩 Collage Thumbnails */}
+  <div className="hidden md:grid grid-cols-3 gap-2 mt-3">
     {images.slice(1, 4).map((img, i) => (
       <button
         key={i}
         onClick={() => setSelectedImage(img)}
-        className={`relative w-full h-28 md:h-auto rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+        className={`relative w-full h-32 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
           selectedImage === img
             ? "border-purple-600 scale-105"
-            : "border-transparent hover:border-purple-300"
+            : "border-transparent hover:border-purple-400"
+        }`}
+      >
+        <img
+          src={getImageUrl(img)}
+          alt={`Thumbnail ${i + 1}`}
+          className="w-full h-full object-cover"
+        />
+      </button>
+    ))}
+  </div>
+
+  {/* 📱 Mobile: Thumbnails in a row */}
+  <div className="flex md:hidden gap-2 overflow-x-auto mt-3 pb-1">
+    {images.map((img, i) => (
+      <button
+        key={i}
+        onClick={() => setSelectedImage(img)}
+        className={`relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+          selectedImage === img
+            ? "border-purple-600 scale-105"
+            : "border-transparent hover:border-purple-400"
         }`}
       >
         <img
@@ -262,8 +283,6 @@ export default function ProductPage() {
     ))}
   </div>
 </div>
-
-
 
         {/* Right - Info */}
         <div className="md:w-1/2 w-full flex flex-col">
