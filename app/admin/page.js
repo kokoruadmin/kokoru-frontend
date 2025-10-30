@@ -993,14 +993,106 @@ export default function AdminPage() {
                   className="border p-2 rounded"
                   required
                 />
-                <input
-                  value={newProduct.price}
-                  onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                  placeholder="Price"
-                  type="number"
-                  className="border p-2 rounded"
-                  required
-                />
+                {/* Pricing Section */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-600 font-medium">Our Price</label>
+                    <input
+                      value={newProduct.ourPrice || ""}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, ourPrice: parseFloat(e.target.value) || 0 })
+                      }
+                      placeholder="Our Price (₹)"
+                      type="number"
+                      className="border p-2 rounded w-full"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 font-medium">Discount %</label>
+                    <input
+                      value={newProduct.discount || ""}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, discount: parseFloat(e.target.value) || 0 })
+                      }
+                      placeholder="Discount (%)"
+                      type="number"
+                      className="border p-2 rounded w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 font-medium">MRP (Auto)</label>
+                    <input
+                      value={
+                        newProduct.ourPrice && newProduct.discount
+                          ? Math.round(newProduct.ourPrice / (1 - newProduct.discount / 100))
+                          : newProduct.mrp || ""
+                      }
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, mrp: parseFloat(e.target.value) || 0 })
+                      }
+                      placeholder="MRP"
+                      type="number"
+                      className="border p-2 rounded w-full bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                {/* Product Controls */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newProduct.allowCOD ?? true}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, allowCOD: e.target.checked })
+                      }
+                    />
+                    COD Available
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newProduct.allowReturn ?? true}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, allowReturn: e.target.checked })
+                      }
+                    />
+                    Return Accepted
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newProduct.allowExchange ?? true}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, allowExchange: e.target.checked })
+                      }
+                    />
+                    Exchange Available
+                  </label>
+                </div>
+
+                {/* Offer Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                  <input
+                    value={newProduct.offerTitle || ""}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, offerTitle: e.target.value })
+                    }
+                    placeholder="Offer Title (e.g. First Order Offer)"
+                    className="border p-2 rounded w-full"
+                  />
+                  <input
+                    value={newProduct.offerText || ""}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, offerText: e.target.value })
+                    }
+                    placeholder="Offer Text (e.g. Get ₹150 off)"
+                    className="border p-2 rounded w-full"
+                  />
+                </div>
+
                 <input
                   value={newProduct.stock}
                   onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
@@ -1276,17 +1368,50 @@ export default function AdminPage() {
                   }
                   className="border p-2 rounded"
                 />
-                <input
-                  type="number"
-                  value={editingProduct.price || 0}
-                  onChange={(e) =>
-                    setEditingProduct({
-                      ...editingProduct,
-                      price: parseFloat(e.target.value || 0),
-                    })
-                  }
-                  className="border p-2 rounded"
-                />
+<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+  <div>
+    <label className="text-xs text-gray-600 font-medium">Our Price</label>
+    <input
+      value={editingProduct.ourPrice || ""}
+      onChange={(e) =>
+        setEditingProduct({
+          ...editingProduct,
+          ourPrice: parseFloat(e.target.value) || 0,
+        })
+      }
+      type="number"
+      className="border p-2 rounded w-full"
+    />
+  </div>
+  <div>
+    <label className="text-xs text-gray-600 font-medium">Discount %</label>
+    <input
+      value={editingProduct.discount || ""}
+      onChange={(e) =>
+        setEditingProduct({
+          ...editingProduct,
+          discount: parseFloat(e.target.value) || 0,
+        })
+      }
+      type="number"
+      className="border p-2 rounded w-full"
+    />
+  </div>
+  <div>
+    <label className="text-xs text-gray-600 font-medium">MRP (Auto)</label>
+    <input
+      value={
+        editingProduct.ourPrice && editingProduct.discount
+          ? Math.round(editingProduct.ourPrice / (1 - editingProduct.discount / 100))
+          : editingProduct.mrp || ""
+      }
+      readOnly
+      type="number"
+      className="border p-2 rounded w-full bg-gray-50"
+    />
+  </div>
+</div>
+
                 <input
                   type="number"
                   value={editingProduct.maxOrder || 10}
