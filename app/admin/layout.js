@@ -1,32 +1,22 @@
-// app/admin/layout.js
 import "../globals.css";
-import { Geist, Geist_Mono } from "next/font/google";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { geistSans, geistMono } from "@/lib/fonts";
+import AdminNavbar from "@/components/AdminNavbar";
 
 export const metadata = {
   title: "Kokoru Admin Panel",
-  description: "Manage Kokoru products and collections",
+  description: "Manage Kokoru products, orders, coupons, and analytics",
 };
 
 export default function AdminLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased w-full min-h-screen flex justify-center bg-[#faf7ff]`}
-        suppressHydrationWarning
-      >
-    <main className="min-h-screen bg-[#faf7ff] p-4 sm:p-6 text-gray-800">
-          {children}
-        </main>
+    <html lang="en">
+      <body suppressHydrationWarning>
+        <div
+          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#faf7ff] min-h-screen text-gray-800`}
+        >
+          <AdminNavbar />
+          <main className="max-w-7xl mx-auto p-6">{children}</main>
+        </div>
       </body>
     </html>
   );

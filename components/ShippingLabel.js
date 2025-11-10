@@ -20,8 +20,9 @@ export default function ShippingLabel({
           <div style={line}>{order.customerName || "-"}</div>
           <div style={{ ...line, whiteSpace: "pre-wrap" }}>
             {(order.address?.address || "").split(/[\n,]+/).map((line, i) => <div key={i}>{line.trim()}</div>)}
+            {order.address?.pincode ? <div key="pin">Pincode: {order.address.pincode}</div> : null}
           </div>
-          <div style={line}>📞 {order.address?.phone || order.phone || "-"}</div>
+          <div style={line}>📞 {order.contact || order.address?.mobile || "-"}</div>
         </div>
         <div>
           <div style={secTitle}>FROM:</div>

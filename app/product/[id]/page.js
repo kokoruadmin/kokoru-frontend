@@ -2,15 +2,12 @@
 export const dynamic = "force-dynamic";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Pagination } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/pagination";
 import { getImageUrl } from "../../../utils/imageHelper";
+import Image from "next/image";
 import { ShoppingCart, ArrowLeft, Zap, Star } from "lucide-react";
 import { useCart } from "../../../context/CartContext";
 import ShareButton from "../../../components/ShareButton";
+import ReviewSection from "../../../components/ReviewSection";
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -25,23 +22,12 @@ export default function ProductPage() {
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [eta, setEta] = useState(null);
-
-  // Reviews
-  const [reviews, setReviews] = useState([]);
-  const [avgRating, setAvgRating] = useState(0);
-  const [reviewsCount, setReviewsCount] = useState(0);
-  const [ratingInput, setRatingInput] = useState(5);
-  const [commentInput, setCommentInput] = useState("");
-  const [submittingReview, setSubmittingReview] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-const [selectedIndex, setSelectedIndex] = useState(0);
-const [isZoomOpen, setIsZoomOpen] = useState(false);
 
-
-
-
-  // Fetch product + reviews
+  // Fetch product
   useEffect(() => {
     if (!id) return;
     const fetchProduct = async () => {
@@ -66,23 +52,7 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
       }
     };
     fetchProduct();
-    fetchReviews();
   }, [id]);
-
-  async function fetchReviews() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/reviews/product/${id}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setReviews(Array.isArray(data.reviews) ? data.reviews : data || []);
-      setAvgRating(data.avg || 0);
-      setReviewsCount(
-        data.count || (Array.isArray(data.reviews) ? data.reviews.length : 0)
-      );
-    } catch (e) {
-      console.error("Failed to load reviews", e);
-    }
-  }
 
   const getColorStock = (color) =>
     color?.sizes?.reduce((sum, s) => sum + (s.stock || 0), 0) || 0;
@@ -107,7 +77,6 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
       ? selectedColor.images
       : product.colors?.flatMap((c) => c.images) || [product.imageUrl];
 
-  // Pricing logic
   const ourPrice =
     typeof product.ourPrice === "number" ? product.ourPrice : product.price;
   const discount =
@@ -179,129 +148,48 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
     }
   };
 
-  const submitReview = async () => {
-    if (submittingReview) return;
-    if (!ratingInput || ratingInput < 1)
-      return alert("Please select a rating");
-
-    const token =
-      localStorage.getItem("kokoru_token") ||
-      localStorage.getItem("kokoru_user_token");
-    if (!token) return alert("Please login to submit a review.");
-
-    setSubmittingReview(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/reviews/${product._id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          rating: ratingInput,
-          comment: commentInput.trim(),
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to submit review");
-      setCommentInput("");
-      setRatingInput(5);
-      fetchReviews();
-    } catch {
-      alert("Failed to submit review. Try again.");
-    } finally {
-      setSubmittingReview(false);
-    }
-  };
-
   return (
     <main className="min-h-screen bg-purple-50 text-gray-800 p-6 flex flex-col items-center pb-40">
       {/* Product details container */}
       <div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full flex flex-col md:flex-row gap-6">
+        {/* 🖼️ Product Images */}
+        <div className="md:w-1/2 w-full">
+          <div className="grid grid-cols-2 grid-rows-2 gap-2 h-[420px] rounded-xl overflow-hidden">
+            <button
+              onClick={() => setIsZoomOpen(true)}
+              className="col-span-1 row-span-2 relative overflow-hidden rounded-lg"
+            >
+              <Image
+                src={getImageUrl(images[selectedIndex])}
+                alt="Main product"
+                fill
+                priority
+                className="object-cover transition-transform duration-300 hover:scale-105"
+              />
+            </button>
 
-{/* 🖼️ Stable collage layout (no jumping) */}
-<div className="md:w-1/2 w-full">
-  <div className="grid grid-cols-2 grid-rows-2 gap-2 h-[420px] rounded-xl overflow-hidden">
-    {/* Main image - always fixed position */}
-    <button
-      onClick={() => setIsZoomOpen(true)}
-      className="col-span-1 row-span-2 relative overflow-hidden rounded-lg"
-    >
-      <img
-        src={getImageUrl(images[selectedIndex])}
-        alt="Main product"
-        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-      />
-    </button>
-
-    {/* Two static thumbnail positions */}
-    {images
-      .filter((_, i) => i !== selectedIndex)
-      .slice(0, 2)
-      .map((img, i) => (
-        <button
-          key={i}
-          onClick={() =>
-            setSelectedIndex(
-              images.indexOf(img) // swap content only
-            )
-          }
-          className="col-span-1 row-span-1 relative overflow-hidden rounded-lg"
-        >
-          <img
-            src={getImageUrl(img)}
-            alt={`Thumbnail ${i + 1}`}
-            className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-          />
-        </button>
-      ))}
-  </div>
-</div>
-
-
-{/* 🔍 Fullscreen Zoom Viewer */}
-{isZoomOpen && (
-  <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
-    {/* Close Button */}
-    <button
-      onClick={() => setIsZoomOpen(false)}
-      className="absolute top-4 right-4 text-white text-3xl font-bold hover:scale-110 transition"
-    >
-      &times;
-    </button>
-
-    {/* Image */}
-    <img
-      src={getImageUrl(images[selectedIndex])}
-      alt="Zoomed product view"
-      className="max-w-[90%] max-h-[85%] object-contain rounded-lg shadow-2xl zoom-enter"
-    />
-
-    {/* Prev / Next Arrows */}
-    {images.length > 1 && (
-      <>
-        <button
-          onClick={() =>
-            setSelectedIndex(
-              (selectedIndex - 1 + images.length) % images.length
-            )
-          }
-          className="absolute left-6 text-white text-4xl hover:scale-110 transition select-none"
-        >
-          ‹
-        </button>
-
-        <button
-          onClick={() =>
-            setSelectedIndex((selectedIndex + 1) % images.length)
-          }
-          className="absolute right-6 text-white text-4xl hover:scale-110 transition select-none"
-        >
-          ›
-        </button>
-      </>
-    )}
-  </div>
-)}
+            {images
+              .filter((_, i) => i !== selectedIndex)
+              .slice(0, 2)
+              .map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() =>
+                    setSelectedIndex(images.indexOf(img))
+                  }
+                  className="col-span-1 row-span-1 relative overflow-hidden rounded-lg"
+                >
+                  <Image
+                    src={getImageUrl(img)}
+                    alt={`Thumbnail ${i + 1}`}
+                    width={300}
+                    height={200}
+                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+                  />
+                </button>
+              ))}
+          </div>
+        </div>
 
         {/* Right - Info */}
         <div className="md:w-1/2 w-full flex flex-col">
@@ -321,24 +209,7 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
             )}
           </div>
 
-          {/* Average rating */}
-          <div className="mt-2 flex items-center gap-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                size={16}
-                className={`${
-                  i < Math.round(avgRating)
-                    ? "text-yellow-400"
-                    : "text-gray-300"
-                }`}
-              />
-            ))}
-            <span className="text-sm text-gray-600">
-              {avgRating?.toFixed(1) || "0.0"} ({reviewsCount || 0})
-            </span>
-          </div>
-
+          {/* Description */}
           <p className="text-gray-600 mt-3 leading-relaxed">
             {product.description}
           </p>
@@ -406,7 +277,7 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
             <div className="flex justify-between items-center">
               <div>
                 <div className="text-sm font-medium text-gray-700">
-                  Get it in 3-4 days
+                  Get it in 3–4 days
                 </div>
                 <div className="text-xs text-gray-500">
                   Enter pincode to check exact date
@@ -427,79 +298,36 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
             )}
           </div>
 
-          {/* Return/COD */}
-          <div className="mt-3 flex gap-2 flex-wrap">
-            {product.allowReturn && (
-              <div className="text-xs border rounded px-2 py-1 bg-white">
-                15 Days Return
-              </div>
-            )}
-            {product.allowExchange && (
-              <div className="text-xs border rounded px-2 py-1 bg-white">
-                15 Days Exchange
-              </div>
-            )}
-            {product.allowCOD && (
-              <div className="text-xs border rounded px-2 py-1 bg-white">
-                Cash On Delivery
-              </div>
-            )}
+          {/* Buttons */}
+          <div className="hidden md:flex mt-6 flex-col sm:flex-row gap-4 items-center">
+            <button
+              onClick={handleAddToCart}
+              disabled={isOutOfStock}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold shadow-sm transition-all duration-200 ${
+                isOutOfStock
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  : "bg-purple-600 hover:bg-purple-700 active:scale-95 text-white"
+              }`}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {isOutOfStock ? "Out of Stock" : "Add to Bag"}
+            </button>
+
+            <button
+              onClick={handleBuyNow}
+              disabled={isOutOfStock}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold shadow-sm transition-all duration-200 ${
+                isOutOfStock
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  : "bg-pink-600 hover:bg-pink-700 active:scale-95 text-white"
+              }`}
+            >
+              <Zap className="w-5 h-5" />
+              Buy Now
+            </button>
+
+            <ShareButton product={product} />
           </div>
-
-          {/* Offer */}
-          <div className="mt-3 border rounded-lg p-3 bg-purple-50">
-            <div className="text-sm font-semibold text-purple-700">
-              {product.offerTitle || "First Order Offer"}
-            </div>
-            <div className="text-xs text-gray-700">
-              {product.offerText ||
-                "Get ₹150 off on your first order above ₹999"}
-            </div>
-          </div>
-
-          {/* Product Details */}
-          <details className="mt-3">
-            <summary className="cursor-pointer font-medium text-gray-800">
-              Product Details
-            </summary>
-            <div className="mt-2 text-sm text-gray-600">
-              {product.longDescription ||
-                product.description ||
-                "No additional details."}
-            </div>
-          </details>
-
-{/* Buttons - visible only on desktop */}
-<div className="hidden md:flex mt-6 flex-col sm:flex-row gap-4 items-center">
-  <button
-    onClick={handleAddToCart}
-    disabled={isOutOfStock}
-    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold shadow-sm transition-all duration-200 ${
-      isOutOfStock
-        ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-        : "bg-purple-600 hover:bg-purple-700 active:scale-95 text-white"
-    }`}
-  >
-    <ShoppingCart className="w-5 h-5" />
-    {isOutOfStock ? "Out of Stock" : "Add to Bag"}
-  </button>
-
-  <button
-    onClick={handleBuyNow}
-    disabled={isOutOfStock}
-    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold shadow-sm transition-all duration-200 ${
-      isOutOfStock
-        ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-        : "bg-pink-600 hover:bg-pink-700 active:scale-95 text-white"
-    }`}
-  >
-    <Zap className="w-5 h-5" />
-    Buy Now
-  </button>
-
-  <ShareButton product={product} />
-</div>
-
 
           <button
             onClick={() => router.push("/shop")}
@@ -511,165 +339,8 @@ const [isZoomOpen, setIsZoomOpen] = useState(false);
         </div>
       </div>
 
-      {/* Reviews Section */}
-      <section className="max-w-5xl w-full mt-10 bg-white rounded-2xl shadow-md p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Customer Reviews</h3>
-
-        {/* Overall rating */}
-        <div className="flex items-center gap-2 mb-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              size={20}
-              className={`${
-                i < Math.round(avgRating) ? "text-yellow-400" : "text-gray-300"
-              }`}
-            />
-          ))}
-          <span className="text-gray-700 text-sm">
-            {avgRating.toFixed(1)} ({reviewsCount} reviews)
-          </span>
-        </div>
-
-        {/* Review form */}
-        <div className="border rounded p-4 mb-6">
-          <p className="font-medium text-gray-700 mb-2">Rate this product</p>
-          <div className="flex items-center gap-2 mb-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setRatingInput(i + 1)}
-                className={`${
-                  i < ratingInput ? "text-yellow-400" : "text-gray-300"
-                }`}
-              >
-                <Star size={24} />
-              </button>
-            ))}
-          </div>
-          <textarea
-            className="w-full border rounded-md p-2 text-sm mb-3"
-            placeholder="Write your review (optional)"
-            rows={3}
-            value={commentInput}
-            onChange={(e) => setCommentInput(e.target.value)}
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => {
-                setRatingInput(5);
-                setCommentInput("");
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 text-sm hover:bg-gray-50"
-            >
-              Reset
-            </button>
-            <button
-              onClick={submitReview}
-              disabled={submittingReview}
-              className={`px-5 py-2 rounded-md text-sm font-medium text-white ${
-                submittingReview
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-purple-600 hover:bg-purple-700"
-              }`}
-            >
-              {submittingReview ? "Submitting..." : "Submit Review"}
-            </button>
-          </div>
-        </div>
-
-        {/* Review list */}
-        <div className="space-y-4">
-          {reviews && reviews.length > 0 ? (
-            reviews.map((rv) => (
-              <div
-                key={rv._id}
-                className="border border-gray-100 rounded-lg p-4 bg-gray-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="font-medium text-gray-800">
-                    {rv.userName || rv.userEmail || "Customer"}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, idx) => (
-                      <Star
-                        key={idx}
-                        size={16}
-                        className={`${
-                          idx < rv.rating ? "text-yellow-400" : "text-gray-300"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {rv.comment && (
-                  <p className="mt-2 text-gray-700 text-sm leading-relaxed">
-                    {rv.comment}
-                  </p>
-                )}
-                <p className="mt-2 text-xs text-gray-500">
-                  {new Date(rv.createdAt).toLocaleString()}
-                </p>
-              </div>
-            ))
-          ) : (
-            <div className="text-sm text-gray-500 italic">No reviews yet.</div>
-          )}
-        </div>
-      </section>
-
-      {/* Size Chart Modal */}
-      {sizeChartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-semibold">Size Chart</h4>
-              <button
-                onClick={() => setSizeChartOpen(false)}
-                className="text-sm text-gray-600 hover:text-gray-900"
-              >
-                Close
-              </button>
-            </div>
-            <table className="w-full text-sm border border-gray-200 rounded">
-              <thead>
-                <tr className="bg-gray-100 text-gray-600 text-xs uppercase">
-                  <th className="p-2 text-left">Size</th>
-                  <th className="p-2 text-left">Chest (in)</th>
-                  <th className="p-2 text-left">Waist (in)</th>
-                  <th className="p-2 text-left">Length (in)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td className="p-2">S</td><td className="p-2">36</td><td className="p-2">32</td><td className="p-2">27</td></tr>
-                <tr><td className="p-2">M</td><td className="p-2">38</td><td className="p-2">34</td><td className="p-2">28</td></tr>
-                <tr><td className="p-2">L</td><td className="p-2">40</td><td className="p-2">36</td><td className="p-2">29</td></tr>
-                <tr><td className="p-2">XL</td><td className="p-2">42</td><td className="p-2">38</td><td className="p-2">30</td></tr>
-                <tr><td className="p-2">XXL</td><td className="p-2">44</td><td className="p-2">40</td><td className="p-2">31</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Sticky bottom bar (for mobile) */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t p-2 shadow-md md:hidden flex items-center justify-between px-3">
-        <button className="p-2 text-gray-500">♡</button>
-        <button
-          onClick={handleAddToCart}
-          className="flex-1 mx-2 border border-gray-300 rounded px-4 py-3 text-sm text-gray-800 font-medium"
-        >
-          Add to Bag
-        </button>
-        <button
-          onClick={handleBuyNow}
-          className="bg-purple-600 text-white rounded px-4 py-3 font-medium"
-        >
-          Buy Now
-        </button>
-      </div>
-
-      {/* Fullscreen Lightbox */}
+      {/* ✅ Modular Reviews */}
+      <ReviewSection productId={product._id} API_BASE_URL={API_BASE_URL} />
     </main>
   );
 }

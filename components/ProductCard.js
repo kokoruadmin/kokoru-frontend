@@ -129,34 +129,24 @@ export default function ProductCard({ item, i }) {
                 return (
                   <SwiperSlide key={`${item._id}-${index}`}>
                     <div className="relative w-full h-64">
-                      {isProxied ? (
-                        <img
-                          src={built}
-                          alt={item.name}
-                          className={`object-cover w-full h-full transition-transform duration-500 hover:scale-105 ${
-                            selectedIsOut ? "grayscale opacity-90" : ""
-                          }`}
-                          loading={index === 0 ? "eager" : "lazy"}
-                          onError={(e) => (e.currentTarget.src = "/no-image.jpg")}
-                        />
-                      ) : (
-                        <Image
-                          src={built}
-                          alt={item.name}
-                          fill
-                          unoptimized
-                          priority={index === 0}
-                          sizes="100vw"
-                          className={`object-cover transition-transform duration-500 hover:scale-105 ${
-                            selectedIsOut ? "grayscale opacity-90" : ""
-                          }`}
-                          onError={(e) => {
-                            try {
-                              e.target.src = "/no-image.jpg";
-                            } catch (err) {}
-                          }}
-                        />
-                      )}
+                      <Image
+                        src={built}
+                        alt={item.name}
+                        fill
+                        unoptimized
+                        priority={index === 0}
+                        sizes="100vw"
+                        className={`object-cover w-full h-full transition-transform duration-500 hover:scale-105 ${
+                          selectedIsOut ? "grayscale opacity-90" : ""
+                        }`}
+                        onError={(e) => {
+                          try {
+                            // fallback to local placeholder
+                            // e.target may be an <img> created by next/image runtime
+                            e.currentTarget && (e.currentTarget.src = "/no-image.jpg");
+                          } catch (err) {}
+                        }}
+                      />
                     </div>
                   </SwiperSlide>
                 );

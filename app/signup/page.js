@@ -12,6 +12,10 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [defaultAddress, setDefaultAddress] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [place, setPlace] = useState("");
+  const [district, setDistrict] = useState("");
+  const [stateName, setStateName] = useState("");
   const [password, setPassword] = useState("");
 
   const API_BASE_URL =
@@ -33,16 +37,32 @@ export default function SignupPage() {
     if (!isClient) return;
 
     try {
+      const payload = {
+        name,
+        email,
+        password,
+        mobile,
+      };
+
+      // include structured address when available
+      if (defaultAddress || pincode) {
+        payload.address = {
+          label: "Home",
+          address: defaultAddress,
+          pincode: pincode,
+          place: place,
+          district: district,
+          state: stateName,
+          mobile: mobile,
+        };
+        // keep backward-compatible string as well
+        payload.defaultAddress = defaultAddress + (pincode ? `\nPincode: ${pincode}` : "");
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          mobile,
-          defaultAddress,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -122,6 +142,33 @@ export default function SignupPage() {
             rows={3}
             required
           />
+          <input
+            type="text"
+            placeholder="Pincode"
+            className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800 placeholder-gray-400"
+            value={pincode}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPincode(v);
+              if (v && v.length === 6) {
+                // fetch pincode details
+                fetch(`${API_BASE_URL}/api/pincode/${v}`).then((res) => res.json()).then((data) => {
+                  if (data && data.ok) {
+                    setPlace(data.places?.[0]?.name || "");
+                    setDistrict(data.district || "");
+                    setStateName(data.state || "");
+                  }
+                }).catch(()=>{});
+              }
+            }}
+            required
+          />
+
+          <div className="grid grid-cols-3 gap-2">
+            <input type="text" placeholder="Place" value={place} readOnly className="border rounded-lg px-3 py-2" />
+            <input type="text" placeholder="District" value={district} readOnly className="border rounded-lg px-3 py-2" />
+            <input type="text" placeholder="State" value={stateName} readOnly className="border rounded-lg px-3 py-2" />
+          </div>
           <input
             type="password"
             placeholder="Password"

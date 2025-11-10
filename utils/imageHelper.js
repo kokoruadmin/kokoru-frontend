@@ -7,28 +7,29 @@ export const getBaseURL = () => {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
 
-  // 🟡 Fallback to LAN IP (useful in local dev only)
-  const LAN_IP = "192.168.1.22";
+  // 🟡 No env var: sensible localhost fallback for local dev.
+  // Prefer localhost:5000 so the app works on machines with dynamic Wi‑Fi IPs.
   const PORT = 5000;
 
   if (typeof window === "undefined") {
-    // Running on server (Next.js SSR)
-    return `http://${LAN_IP}:${PORT}`;
+    // Running on server (Next.js SSR) — use localhost for local dev server
+    return `http://localhost:${PORT}`;
   }
 
   const { protocol, hostname } = window.location;
 
+  // If client is on a local network host (e.g., Android or LAN IP),
+  // forward requests to that host's backend on the same machine/port.
   if (/^192\.168\./.test(hostname) || /^10\./.test(hostname)) {
-    // Android or local Wi-Fi
     return `${protocol}//${hostname}:${PORT}`;
   }
 
+  // If running on localhost, point to local backend port
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    // Desktop development
-    return `http://${LAN_IP}:${PORT}`;
+    return `http://localhost:${PORT}`;
   }
 
-  // 🌍 Production (e.g., Vercel)
+  // Production: assume same origin (no proxy)
   return `${protocol}//${hostname}`;
 };
 

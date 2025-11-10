@@ -93,7 +93,38 @@ export default function MyOrdersPage() {
           .join("")
       : "";
 
-    const total = Number(order.amount || 0).toFixed(2);
+    // Prefer explicit totalAfterDiscount if backend stored it.
+    // Fallback to amount - discountAmount, then to amount.
+    const rawTotal = typeof order.totalAfterDiscount !== "undefined" && order.totalAfterDiscount !== null
+      ? Number(order.totalAfterDiscount)
+      : (Number(order.amount || 0) - Number(order.discountAmount || 0));
+    const total = Number(isNaN(rawTotal) ? 0 : rawTotal).toFixed(2);
+
+    // Calculate coupon breakdown for invoice display
+    const subtotalAmount = Array.isArray(order.items)
+      ? order.items.reduce((s, it) => s + (Number(it.price || 0) * Number(it.quantity || 0)), 0)
+      : 0;
+
+    const discount = Number(order.discountAmount || 0);
+    const coupon = order.coupon || null;
+
+    let couponCalcText = "";
+    if (coupon && (coupon.discountType === "percent" || coupon.discountType === "flat")) {
+      if (coupon.discountType === "percent") {
+        const pct = Number(coupon.discountValue || 0);
+        const raw = (subtotalAmount * pct) / 100;
+        const cap = coupon.maxDiscount ? Number(coupon.maxDiscount) : null;
+        const applied = cap ? Math.min(raw, cap) : raw;
+        couponCalcText = `${pct}% of ₹${subtotalAmount.toFixed(2)} = ₹${raw.toFixed(2)}`;
+        if (cap) couponCalcText += ` (capped at ₹${cap.toFixed(2)} → applied ₹${applied.toFixed(2)})`;
+        else couponCalcText += ` → applied ₹${discount.toFixed(2)}`;
+      } else {
+        const flat = Number(coupon.discountValue || 0);
+        couponCalcText = `Flat ₹${flat.toFixed(2)} → applied ₹${discount.toFixed(2)}`;
+      }
+    } else if (discount > 0) {
+      couponCalcText = `Discount applied: ₹${discount.toFixed(2)}`;
+    }
 
     return `
       <!doctype html>
@@ -122,12 +153,14 @@ export default function MyOrdersPage() {
           <div>Elegant & Handmade with Love 🌸</div>
         </div>
 
-        <div class="meta">
+          <div class="meta">
           <div><strong>Order ID:</strong> ${order._id}</div>
           <div><strong>Date:</strong> ${formatDate(order.createdAt)}</div>
           <div><strong>Status:</strong> ${order.status || "processing"}</div>
           <div><strong>Customer:</strong> ${order.customerName || order.userEmail || "N/A"}</div>
           <div><strong>Ship To:</strong> ${order.address?.address || "N/A"}</div>
+          ${order.address?.pincode ? `<div><strong>Pincode:</strong> ${order.address.pincode}</div>` : ''}
+          <div><strong>Contact:</strong> ${order.contact || order.address?.mobile || 'N/A'}</div>
         </div>
 
         <h3>Items</h3>
@@ -140,7 +173,19 @@ export default function MyOrdersPage() {
           </tbody>
         </table>
 
-        <div class="total">Total: ₹${total}</div>
+        <div class="meta" style="margin-top:12px; text-align:right;">
+          <div style="border-bottom:1px solid #ddd; padding-bottom:8px;">
+            <div><strong>Subtotal:</strong> ₹${subtotalAmount.toFixed(2)}</div>
+            ${discount > 0 ? `
+            <div style="color:#059669">
+              <strong>Less ${coupon ? `Coupon (${coupon.code})` : 'Discount'}:</strong> -₹${discount.toFixed(2)}
+              ${couponCalcText ? `<div style="font-size:12px; color:#666; margin-top:2px">${couponCalcText}</div>` : ''}
+            </div>` : ''}
+          </div>
+            <div style="font-weight:700; text-align:right; margin-top:12px; font-size:16px; color:#4b0082;">
+            <strong>Net Amount:</strong> ₹${total}
+          </div>
+        </div>
 
         <div style="margin-top:28px;text-align:center;">
           <small>Thank you for shopping with Kokoru 🌸</small>
@@ -239,10 +284,23 @@ const downloadInvoice = async (orderId) => {
     // Dynamically import html2pdf to keep bundle size light
     const html2pdf = (await import("html2pdf.js")).default;
 
-    // Temporary element for conversion
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = html;
-    document.body.appendChild(tempDiv);
+    // Render the invoice inside a hidden iframe to avoid inheriting
+    // global CSS (Tailwind v4 may use modern color functions like `lab()`
+    // which some parsers used by html2pdf/html2canvas can't handle).
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.overflow = "hidden";
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
 
     const options = {
       margin: 0.5,
@@ -252,8 +310,12 @@ const downloadInvoice = async (orderId) => {
       jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
     };
 
-    await html2pdf().from(tempDiv).set(options).save();
-    tempDiv.remove();
+    // Use the iframe body as the source so html2pdf doesn't parse the app's
+    // global styles that may include unsupported CSS color functions.
+    await html2pdf().from(iframeDoc.body).set(options).save();
+
+    // Clean up
+    iframe.remove();
   } catch (err) {
     console.error("❌ Download invoice failed:", err);
     alert("Failed to generate PDF. See console for details.");
@@ -296,15 +358,21 @@ const downloadInvoice = async (orderId) => {
             </div>
 
             <div className="text-sm text-gray-700">
-              {order.items.map(it => (
-                <div key={it.name + it.sizeLabel}>
+              {order.items.map((it, idx) => (
+                <div key={`${it._id || it.id || it.productId || it.name}-${it.colorName || ""}-${it.sizeLabel || ""}-${idx}`}>
                   {it.name} {it.colorName && `(${it.colorName}${it.sizeLabel ? " - " + it.sizeLabel : ""})`} × {it.quantity}
                 </div>
               ))}
             </div>
 
             <div className="flex justify-between items-center mt-3 text-sm">
-              <span className="font-medium">Total: ₹{order.amount}</span>
+              {/* Show final payable amount: prefer totalAfterDiscount, else amount-discount, else amount */}
+              <span className="font-medium">Total: ₹{(function() {
+                const raw = typeof order.totalAfterDiscount !== "undefined" && order.totalAfterDiscount !== null
+                  ? Number(order.totalAfterDiscount)
+                  : (Number(order.amount || 0) - Number(order.discountAmount || 0));
+                return Number(isNaN(raw) ? 0 : raw).toFixed(2);
+              })()}</span>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => printInvoice(order._id)}

@@ -4,9 +4,12 @@ const nextConfig = {
     unoptimized: true, // Keep this to avoid blocking external image proxies
     remotePatterns: [
       // 🌸 Local backend proxy (needed for Android & LAN devices)
+      // Local backend proxy used for development. If you need to expose the
+      // dev server to other devices on your LAN, set NEXT_PUBLIC_API_BASE_URL
+      // accordingly instead of embedding a fixed IP here.
       {
         protocol: "http",
-        hostname: "192.168.1.22",
+        hostname: "localhost",
         port: "5000",
         pathname: "/api/image/**",
       },
