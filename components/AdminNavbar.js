@@ -3,11 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function AdminNavbar() {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("kokoru_admin_token");
+      setIsLoggedIn(!!token);
+    }
+  }, []);
+
+  // Don't show navbar on login page or if not logged in
+  if (pathname === "/admin/login" || !isLoggedIn) {
+    return null;
+  }
 
   const navLinks = [
+    { name: "Dashboard", href: "/admin" },
     { name: "Products", href: "/admin/products" },
     { name: "Orders", href: "/admin/orders" },
     { name: "Coupons", href: "/admin/coupons" },

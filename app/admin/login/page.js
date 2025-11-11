@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { LogIn, User, Lock, KeyRound } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -9,6 +10,32 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [passkey, setPasskey] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const router = useRouter();
+
+  // Check if admin is already logged in
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const adminToken = localStorage.getItem("kokoru_admin_token");
+      if (adminToken) {
+        router.push("/admin");
+        return;
+      }
+      setCheckingAuth(false);
+    }
+  }, [router]);
+
+  // Show loading while checking authentication
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-purple-600">Checking authentication...</p>
+        </div>
+      </main>
+    );
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault();
