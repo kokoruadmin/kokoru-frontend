@@ -7,6 +7,7 @@ export default function AdminCouponsPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editCoupon, setEditCoupon] = useState(null);
+  const [adminToken, setAdminToken] = useState("");
   const [formData, setFormData] = useState({
     code: "",
     discountType: "flat",
@@ -21,9 +22,14 @@ export default function AdminCouponsPage() {
   });
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-const adminToken =
-  localStorage.getItem("kokoru_admin_token") ||
-  localStorage.getItem("admin_token");
+
+  // Get admin token from localStorage on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("kokoru_admin_token") || localStorage.getItem("admin_token");
+      setAdminToken(token || "");
+    }
+  }, []);
 
   // Fetch all coupons
   const loadCoupons = async () => {
@@ -41,7 +47,11 @@ const adminToken =
     }
   };
 
-  useEffect(() => { loadCoupons(); }, []);
+  useEffect(() => { 
+    if (adminToken) {
+      loadCoupons(); 
+    }
+  }, [adminToken]);
 
   // Submit new / edited coupon
 // Submit new / edited coupon
