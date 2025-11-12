@@ -73,11 +73,27 @@ export default function ProductCard({ item, i }) {
   }, [item.maxOrder, selectedColor, selectedSize, currentStock]);
 
   const images = useMemo(() => {
-    const validImages =
-      selectedColor?.images?.length > 0
-        ? selectedColor.images
-        : item.colors?.flatMap((c) => c.images) || [];
-    return validImages.length > 0 ? validImages : [item.imageUrl || "/no-image.jpg"];
+    // Ensure the product's primary thumbnail (first image of product) appears first everywhere.
+    const productFirst = (item.colors && item.colors[0] && Array.isArray(item.colors[0].images) && item.colors[0].images[0])
+      ? item.colors[0].images[0]
+      : item.imageUrl || null;
+
+    // Collect candidate images: selected color images, then all color images
+    const selectedImgs = Array.isArray(selectedColor?.images) ? selectedColor.images : [];
+    const allImgs = Array.isArray(item.colors) ? item.colors.flatMap((c) => c.images || []) : [];
+
+    // Build ordered list preferring productFirst first, then selectedImgs, then allImgs, deduplicated
+    const list = [];
+    const pushIf = (src) => {
+      if (!src) return;
+      if (!list.includes(src)) list.push(src);
+    };
+
+    pushIf(productFirst);
+    selectedImgs.forEach(pushIf);
+    allImgs.forEach(pushIf);
+
+    return list.length > 0 ? list : [item.imageUrl || "/no-image.jpg"];
   }, [selectedColor, item.colors, item.imageUrl]);
 
   const productLink = `/product/${item._id}`;

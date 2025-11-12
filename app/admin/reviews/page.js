@@ -137,10 +137,11 @@ export default function AdminReviewsPage() {
     return <div className="p-10 text-center text-gray-500">Loading reviews...</div>;
 
   return (
-    <main className="p-8 bg-purple-50 min-h-screen text-gray-800">
-      <h1 className="text-3xl font-bold mb-6 text-purple-800">
-        Admin: Customer Reviews Dashboard
-      </h1>
+    <main className="p-6 bg-gray-50 min-h-screen text-gray-800">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Customer Reviews</h1>
+        <p className="text-gray-600 mt-1">Monitor customer feedback and manage reviews</p>
+      </div>
 
       {/* 🔹 Analytics Cards */}
       <div className="grid md:grid-cols-3 gap-6 mb-8">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import InvoicePreview from "@/components/InvoicePreview";
 import ShippingLabel from "@/components/ShippingLabel";
 import { jsPDF } from "jspdf";
@@ -245,15 +246,20 @@ const exportNodeToPdf = async (node, filename, { format = "a4", margin = 8 } = {
 
   /* ---------------- UI ---------------- */
   return (
-    <div className="p-4">
+    <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-purple-700">📦 Orders</h1>
-        <input
-          className="border p-2 rounded w-64 text-sm"
-          placeholder="Search name, email, address"
-          value={filter.q || ""}
-          onChange={(e) => setFilter({ q: e.target.value })}
-        />
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
+          <p className="text-gray-600 mt-1">Manage customer orders and shipping</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            className="form-input w-64 text-sm"
+            placeholder="Search name, email, address"
+            value={filter.q || ""}
+            onChange={(e) => setFilter({ q: e.target.value })}
+          />
+        </div>
       </div>
 
       {filteredOrders.length === 0 ? (
@@ -282,9 +288,24 @@ const exportNodeToPdf = async (node, filename, { format = "a4", margin = 8 } = {
                     {o.address?.address}
                   </td>
                   <td>
-                    {Array.isArray(o.items)
-                      ? o.items.map((it) => `${it.name} x${it.quantity}`).join(", ")
-                      : ""}
+                    {Array.isArray(o.items) ? (
+                      <div className="space-y-1 text-sm">
+                        {o.items.map((it, idx) => (
+                          <div key={`${o._id}-item-${idx}`} className="truncate max-w-xs">
+                            {it.productId ? (
+                              <Link href={`/product/${it.productId}`} className="text-purple-700 hover:underline mr-1">
+                                {it.name}
+                              </Link>
+                            ) : (
+                              <span className="mr-1">{it.name}</span>
+                            )}
+                            <span className="text-gray-600">x{it.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      ""
+                    )}
                   </td>
                   <td className="text-center font-medium">
                     ₹{o.totalAfterDiscount ?? o.amount ?? 0}

@@ -163,35 +163,20 @@ export default function AdminPage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">
-          <Link href="/admin" className="inline-flex items-center gap-2 text-purple-700 hover:underline">
-            <span aria-hidden>🌸</span>
-            <span>Kokoru Admin</span>
-          </Link>
-        </h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1">Welcome to Kokoru Admin Panel</p>
+        </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push('/')}
-            className="px-3 py-1 border rounded hover:bg-gray-100 text-sm flex items-center gap-2"
-            title="Go Home"
-          >
-            <HomeIcon size={14} />
-            Home
-          </button>
-          <button
             onClick={handleRefresh}
-            className="px-3 py-1 border rounded hover:bg-gray-100 text-sm"
-            title="Refresh"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-sm"
+            title="Refresh Dashboard Data"
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
             Refresh
-          </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-1 border rounded hover:bg-gray-100"
-            title="Logout"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </div>
@@ -237,6 +222,26 @@ export default function AdminPage() {
               </div>
             </div>
           ) : null}
+
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium">Quick Actions</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <Link href="/admin/orders" className="p-4 border rounded hover:bg-gray-50 transition-colors">
+                <div className="text-sm text-gray-500">Manage</div>
+                <div className="text-lg font-medium text-purple-700">Orders</div>
+              </Link>
+              <Link href="/admin/products" className="p-4 border rounded hover:bg-gray-50 transition-colors">
+                <div className="text-sm text-gray-500">Manage</div>
+                <div className="text-lg font-medium text-purple-700">Products</div>
+              </Link>
+              <Link href="/admin/users" className="p-4 border rounded hover:bg-gray-50 transition-colors">
+                <div className="text-sm text-gray-500">Manage</div>
+                <div className="text-lg font-medium text-purple-700">Users</div>
+              </Link>
+            </div>
+          </section>
 
           <section>
             <h2 className="text-lg font-medium mb-2">Recent Orders</h2>

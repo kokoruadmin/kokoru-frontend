@@ -153,7 +153,8 @@ export function CartProvider({ children }) {
           _id: product._id,
           key: uniqueKey,
           name: product.name,
-          imageUrl: product.imageUrl ?? product.colors?.[0]?.images?.[0] ?? "",
+          // Prefer the product's first image (first color's first image) as the canonical thumbnail
+          imageUrl: product.colors?.[0]?.images?.[0] ?? product.imageUrl ?? "",
           colorName: selectedColor ?? null,
           sizeLabel: selectedSize ?? null,
           quantity: Math.min(quantity, allowedMax),

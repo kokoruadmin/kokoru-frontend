@@ -64,7 +64,7 @@ export default function LoginPage() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full border border-purple-200 rounded-lg px-3 py-2 mb-3 text-gray-800 focus:ring-2 focus:ring-purple-400 focus:outline-none"
+          className="w-full form-input mb-3"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -72,7 +72,7 @@ export default function LoginPage() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full border border-purple-200 rounded-lg px-3 py-2 mb-5 text-gray-800 focus:ring-2 focus:ring-purple-400 focus:outline-none"
+          className="w-full form-input mb-5"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -85,8 +85,17 @@ export default function LoginPage() {
           Login
         </button>
 
+        <div className="mt-4 text-center">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-purple-600 hover:text-purple-700 hover:underline"
+          >
+            Forgot your password?
+          </Link>
+        </div>
+
         <p className="text-sm text-center mt-4 text-gray-700">
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <Link
             href={`/signup?redirectTo=${encodeURIComponent(redirectTo)}`}
             className="text-purple-700 font-semibold hover:underline"

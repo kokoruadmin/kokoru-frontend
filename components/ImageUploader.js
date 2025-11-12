@@ -48,7 +48,7 @@ export default function ImageUploader({ onUpload }) {
         type="file"
         accept="image/*"
         onChange={handleFile}
-        className="border p-2 rounded w-full text-sm"
+        className="w-full form-input"
       />
 
       {preview && (

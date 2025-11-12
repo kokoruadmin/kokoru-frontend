@@ -11,18 +11,26 @@ export default function ShippingLabel({
 }) {
   if (!order) return null;
 
+  // normalize address shape for robust display
+  const { normalizeAddress } = require("../utils/addressHelper");
+  const a = normalizeAddress(order.address || {});
+
   return (
     <div id="label-root" style={labelWrap}>
       <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6 }}>COURIER LABEL</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <div style={secTitle}>TO:</div>
-          <div style={line}>{order.customerName || "-"}</div>
+          <div style={line}>{order.customerName || a.name || "-"}</div>
           <div style={{ ...line, whiteSpace: "pre-wrap" }}>
-            {(order.address?.address || "").split(/[\n,]+/).map((line, i) => <div key={i}>{line.trim()}</div>)}
-            {order.address?.pincode ? <div key="pin">Pincode: {order.address.pincode}</div> : null}
+            {(a.address || "").split(/[\n,]+/).map((line, i) => (
+              <div key={i}>{line.trim()}</div>
+            ))}
+            {a.pincode ? <div key="pin">Pincode: {a.pincode}</div> : null}
           </div>
-          <div style={line}>📞 {order.contact || order.address?.mobile || "-"}</div>
+          {a.landmark ? <div style={line}>📍 {a.landmark}</div> : null}
+          <div style={line}>📞 {order.contact || a.mobile || "-"}{a.alternateMobile ? ` • Alt: ${a.alternateMobile}` : ''}</div>
+          {a.email ? <div style={line}>✉️ {a.email}</div> : null}
         </div>
         <div>
           <div style={secTitle}>FROM:</div>

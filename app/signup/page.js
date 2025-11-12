@@ -8,7 +8,8 @@ export default function SignupPage() {
   const [isClient, setIsClient] = useState(false);
   const [redirectTo, setRedirectTo] = useState("/shop");
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [defaultAddress, setDefaultAddress] = useState("");
@@ -37,8 +38,9 @@ export default function SignupPage() {
     if (!isClient) return;
 
     try {
+      const composedName = `${firstName || ''}${lastName ? ' ' + lastName : ''}`.trim();
       const payload = {
-        name,
+        name: composedName,
         email,
         password,
         mobile,
@@ -110,18 +112,28 @@ export default function SignupPage() {
 
         {/* 📝 Form Fields */}
         <div className="grid grid-cols-1 gap-3">
-          <input
-            type="text"
-            placeholder="Full Name"
-            className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800 placeholder-gray-400"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="text"
+              placeholder="First name"
+              className="w-full form-input"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Surname"
+              className="w-full form-input"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
           <input
             type="email"
             placeholder="Email"
-            className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800 placeholder-gray-400"
+            className="w-full form-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -129,14 +141,14 @@ export default function SignupPage() {
           <input
             type="tel"
             placeholder="Mobile number"
-            className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800 placeholder-gray-400"
+            className="w-full form-input"
             value={mobile}
             onChange={(e) => setMobile(e.target.value)}
             required
           />
           <textarea
             placeholder="Default shipping address"
-            className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800 placeholder-gray-400 resize-none"
+            className="w-full form-input resize-none"
             value={defaultAddress}
             onChange={(e) => setDefaultAddress(e.target.value)}
             rows={3}
@@ -145,7 +157,7 @@ export default function SignupPage() {
           <input
             type="text"
             placeholder="Pincode"
-            className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800 placeholder-gray-400"
+            className="w-full form-input"
             value={pincode}
             onChange={(e) => {
               const v = e.target.value;
@@ -165,14 +177,14 @@ export default function SignupPage() {
           />
 
           <div className="grid grid-cols-3 gap-2">
-            <input type="text" placeholder="Place" value={place} readOnly className="border rounded-lg px-3 py-2" />
-            <input type="text" placeholder="District" value={district} readOnly className="border rounded-lg px-3 py-2" />
-            <input type="text" placeholder="State" value={stateName} readOnly className="border rounded-lg px-3 py-2" />
+            <input type="text" placeholder="Place" value={place} readOnly className="w-full form-input" />
+            <input type="text" placeholder="District" value={district} readOnly className="w-full form-input" />
+            <input type="text" placeholder="State" value={stateName} readOnly className="w-full form-input" />
           </div>
           <input
             type="password"
             placeholder="Password"
-            className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800 placeholder-gray-400"
+            className="w-full form-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

@@ -108,10 +108,11 @@ export default function StockManagementPage() {
     );
 
   return (
-    <main className="p-8 bg-purple-50 min-h-screen text-gray-800">
-      <h1 className="text-3xl font-bold mb-6 text-purple-800">
-        🏷️ Stock Management
-      </h1>
+    <main className="p-6 bg-gray-50 min-h-screen text-gray-800">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Stock Management</h1>
+        <p className="text-gray-600 mt-1">Monitor and manage product inventory levels</p>
+      </div>
 
       {/* 🔍 Filter Bar */}
       <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-4 mb-6 flex flex-wrap items-center gap-4">

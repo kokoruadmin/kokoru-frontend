@@ -9,15 +9,9 @@ export const metadata = {
 
 export default function AdminLayout({ children }) {
   return (
-    <html lang="en">
-      <body suppressHydrationWarning>
-        <div
-          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#faf7ff] min-h-screen text-gray-800`}
-        >
-          <AdminNavbar />
-          <main className="max-w-7xl mx-auto p-6">{children}</main>
-        </div>
-      </body>
-    </html>
+    <div className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#faf7ff] min-h-screen text-gray-800`}>
+      <AdminNavbar />
+      <main className="max-w-7xl mx-auto p-6">{children}</main>
+    </div>
   );
 }

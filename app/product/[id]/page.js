@@ -288,7 +288,7 @@ export default function ProductPage() {
                 onChange={(e) => setPin(e.target.value)}
                 onBlur={() => checkDelivery(pin)}
                 placeholder="Pincode"
-                className="border rounded px-3 py-2 w-28"
+                className="w-28 form-input"
               />
             </div>
             {eta && (
@@ -327,6 +327,37 @@ export default function ProductPage() {
             </button>
 
             <ShareButton product={product} />
+          </div>
+
+          {/* Mobile action bar (visible on small screens) */}
+          <div className="md:hidden fixed bottom-4 left-4 right-4 z-50">
+            <div className="bg-white rounded-lg p-3 shadow-lg flex gap-3 items-center">
+              <button
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold shadow-sm transition-all duration-200 ${
+                  isOutOfStock
+                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    : "bg-purple-600 hover:bg-purple-700 text-white"
+                }`}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {isOutOfStock ? "Out of Stock" : "Add"}
+              </button>
+
+              <button
+                onClick={handleBuyNow}
+                disabled={isOutOfStock}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold shadow-sm transition-all duration-200 ${
+                  isOutOfStock
+                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    : "bg-pink-600 hover:bg-pink-700 text-white"
+                }`}
+              >
+                <Zap className="w-5 h-5" />
+                Buy
+              </button>
+            </div>
           </div>
 
           <button

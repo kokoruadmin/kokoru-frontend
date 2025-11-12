@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -77,6 +78,8 @@ export default function MyOrdersPage() {
      Build invoice HTML string
      ========================= */
   function buildInvoiceHTML(order) {
+    const { normalizeAddress } = require("../../utils/addressHelper");
+    const a = normalizeAddress(order.address || {});
     const itemsHtml = Array.isArray(order.items)
       ? order.items
           .map(
@@ -158,9 +161,9 @@ export default function MyOrdersPage() {
           <div><strong>Date:</strong> ${formatDate(order.createdAt)}</div>
           <div><strong>Status:</strong> ${order.status || "processing"}</div>
           <div><strong>Customer:</strong> ${order.customerName || order.userEmail || "N/A"}</div>
-          <div><strong>Ship To:</strong> ${order.address?.address || "N/A"}</div>
-          ${order.address?.pincode ? `<div><strong>Pincode:</strong> ${order.address.pincode}</div>` : ''}
-          <div><strong>Contact:</strong> ${order.contact || order.address?.mobile || 'N/A'}</div>
+          <div><strong>Ship To:</strong> ${a.address || "N/A"}</div>
+          ${a.pincode ? `<div><strong>Pincode:</strong> ${a.pincode}</div>` : ''}
+          <div><strong>Contact:</strong> ${order.contact || a.mobile || 'N/A'}</div>
         </div>
 
         <h3>Items</h3>
@@ -360,7 +363,14 @@ const downloadInvoice = async (orderId) => {
             <div className="text-sm text-gray-700">
               {order.items.map((it, idx) => (
                 <div key={`${it._id || it.id || it.productId || it.name}-${it.colorName || ""}-${it.sizeLabel || ""}-${idx}`}>
-                  {it.name} {it.colorName && `(${it.colorName}${it.sizeLabel ? " - " + it.sizeLabel : ""})`} × {it.quantity}
+                  { (it.productId || it._id) ? (
+                    <Link href={`/product/${it.productId || it._id}`} className="text-purple-700 hover:underline mr-1">
+                      {it.name}
+                    </Link>
+                  ) : (
+                    <span className="mr-1">{it.name}</span>
+                  )}
+                  {it.colorName && `(${it.colorName}${it.sizeLabel ? " - " + it.sizeLabel : ""})`} × {it.quantity}
                 </div>
               ))}
             </div>

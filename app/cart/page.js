@@ -9,6 +9,8 @@ import { loadRazorpay } from "../../utils/razorpayHelper";
 import { getImageUrl } from "../../utils/imageHelper";
 import { Loader2, Tag, Trash2, Plus, Minus, Home } from "lucide-react";
 import AddAddressModal from "../../components/AddAddressModal";
+import AddressForm from "../../components/AddressForm";
+import AddressCard from "../../components/AddressCard";
 
 export default function CartPage() {
   const { cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart } = useCart();
@@ -56,17 +58,37 @@ export default function CartPage() {
     if (!isClient) return;
     const token = localStorage.getItem("kokoru_token");
     if (!token) return;
-
     fetch(`${API_BASE_URL}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())
       .then(setUser)
       .catch(() => {});
 
+    // load addresses and dedupe (avoid showing legacy default string + structured record twice)
     fetch(`${API_BASE_URL}/api/users/addresses`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
-      .then((data) => setAddresses(Array.isArray(data) ? data : []))
+      .then((data) => {
+        let list = Array.isArray(data) ? data : [];
+        // dedupe by normalized address + pincode
+        try {
+          const seen = new Set();
+          const out = [];
+          for (const item of list) {
+            // normalize address text; if string, use as-is
+            const keyAddr = (typeof item === 'string' ? item : item.address || item.addressText || JSON.stringify(item)).toString().trim();
+            const keyPin = (item && item.pincode) ? String(item.pincode).trim() : '';
+            const key = `${keyAddr}::${keyPin}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(item);
+          }
+          list = out;
+        } catch (e) {
+          // fallback: keep as-is
+        }
+        setAddresses(list);
+      })
       .catch(() => {});
   }, [isClient]);
 
@@ -85,11 +107,12 @@ export default function CartPage() {
     }
   };
 
-  // Auto-select the first address when addresses load if none selected yet.
+  // Auto-select the default address (or first) when addresses load if none selected yet.
   useEffect(() => {
     if (!isClient) return;
     if (addresses && addresses.length > 0 && !selectedAddress) {
-      setSelectedAddress(addresses[0]);
+      const def = addresses.find((a) => a && a.isDefault) || addresses[0];
+      setSelectedAddress(def);
     }
   }, [addresses, isClient, selectedAddress]);
 
@@ -207,9 +230,10 @@ export default function CartPage() {
             // show full-page loading while verifying payment to avoid flashing cart UI
             setProcessingPayment(true);
 
+            const token = localStorage.getItem("kokoru_token");
             const verifyRes = await fetch(`${API_BASE_URL}/api/payment/verify`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
               body: JSON.stringify({
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
@@ -338,9 +362,15 @@ export default function CartPage() {
           {cart.map((item) => (
             <div key={item.key} className="bg-white p-4 rounded-xl shadow flex items-center gap-4 justify-between">
               <div className="flex items-center gap-3">
-                <Image src={getImageUrl(item.imageUrl)} width={80} height={80} alt={item.name} className="rounded-lg border" />
+                <Link href={`/product/${item._id}`} className="flex items-center gap-3">
+                  <Image src={getImageUrl(item.imageUrl)} width={80} height={80} alt={item.name} className="rounded-lg border" />
+                </Link>
                 <div>
-                  <h3 className="font-semibold text-purple-800">{item.name}</h3>
+                  <h3 className="font-semibold text-purple-800">
+                    <Link href={`/product/${item._id}`} className="hover:underline">
+                      {item.name}
+                    </Link>
+                  </h3>
                   <p className="text-sm text-gray-500">
                     {item.colorName} {item.sizeLabel && `| ${item.sizeLabel}`}
                   </p>
@@ -395,7 +425,7 @@ export default function CartPage() {
                 placeholder="Enter coupon code"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value)}
-                className="flex-1 border px-3 py-2 rounded-lg text-sm"
+                className="flex-1 form-input"
               />
               {!appliedCoupon ? (
                 <button onClick={handleApplyCoupon} className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-1">
@@ -413,59 +443,35 @@ export default function CartPage() {
               <Home size={16} /> Delivery Address
             </h3>
             {addresses.length > 0 && (
-              <div className="space-y-1 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 {addresses.map((addr, idx) => {
                   const idStr = String(addr && (addr._id ?? addr.address ?? ''));
+                  const isSelected = String(selectedAddress?._id ?? selectedAddress?.address ?? selectedAddress ?? '') === idStr;
                   return (
-                    <label key={`${idStr}-${idx}`} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="radio"
-                        name="address"
-                        value={`${idStr}-${idx}`}
-                        // support legacy addresses which may be plain strings or objects without _id
-                        checked={
-                          String(selectedAddress?._id ?? selectedAddress?.address ?? selectedAddress ?? '') === idStr
-                        }
-                        onChange={() => setSelectedAddress(addr)}
-                      />
-                    <span className="flex-1"><strong>{addr.label}</strong>: {addr.address}{addr.pincode ? `, ${addr.pincode}` : ''}</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); setModalInitialData(addr); setShowAddressModal(true); setSelectedAddress(addr); setCheckoutPending(false); }}
-                        className="text-sm text-blue-600 hover:underline mr-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async (e) => {
+                    <div key={`${idStr}-${idx}`} onClick={() => setSelectedAddress(addr)}>
+                      <AddressCard addr={addr} selected={isSelected} onSelect={() => setSelectedAddress(addr)} userName={user?.name} />
+                      <div className="flex items-center gap-2 mt-2 text-xs">
+                        <button type="button" onClick={(e) => { e.preventDefault(); setModalInitialData(addr); setShowAddressModal(true); setSelectedAddress(addr); setCheckoutPending(false); }} className="text-sm text-blue-600 hover:underline mr-2">Edit</button>
+                        <button type="button" onClick={async (e) => {
                           e.preventDefault();
                           const token = localStorage.getItem("kokoru_token");
                           if (!token) return alert("Please log in to delete addresses");
                           if (!confirm("Delete this address?")) return;
                           const prev = addresses;
                           try {
-                            // allow legacy addresses without _id: use address text as identifier
                             const idOrKey = String(addr && (addr._id ?? addr.address ?? ''));
                             setDeletingId(idOrKey);
-                            // optimistic removal using either _id or address text
                             setAddresses((cur) => cur.filter((a) => String(a && (a._id ?? a.address ?? '')) !== idOrKey));
-
                             const res = await fetch(`${API_BASE_URL}/api/users/addresses/${encodeURIComponent(idOrKey)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ addressText: addr.address, pincode: addr.pincode, mobile: addr.mobile }) });
                             let data = {};
-                            try { data = await res.json(); } catch(e) { /* ignore parse errors */ }
+                            try { data = await res.json(); } catch(e) {}
                             if (!res.ok) {
-                              // If server tells us which ids are available, try to resolve a matching address and retry once
                               console.warn('Delete failed', { status: res.status, body: data });
                               if (res.status === 404 && data?.available && data.available.length > 0) {
-                                // refresh addresses from server to get authoritative ids
                                 const refreshed = await refreshAddresses();
                                 const list = Array.isArray(refreshed) ? refreshed : refreshed?.addresses || [];
-                                // try to find a matching address by address text + pincode
                                 const match = list.find((a) => a && a.address && a.pincode && addr.address && (String(a.address).trim() === String(addr.address).trim()) && String(a.pincode).trim() === String(addr.pincode || '').trim());
                                 if (match && match._id) {
-                                  // retry deletion with the correct id once
                                   const retryId = String(match._id);
                                   setDeletingId(retryId);
                                   const retryRes = await fetch(`${API_BASE_URL}/api/users/addresses/${encodeURIComponent(retryId)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
@@ -474,23 +480,17 @@ export default function CartPage() {
                                     setAddresses(prev);
                                     return alert(data?.message || 'Failed to delete address after resolving id');
                                   }
-                                  // final refresh
                                   await refreshAddresses();
                                   if (selectedAddress && String(selectedAddress._id ?? selectedAddress.address ?? selectedAddress ?? '') === retryId) setSelectedAddress(null);
                                   setDeletingId(null);
                                   return;
                                 }
                               }
-
-                              // revert optimistic removal and show message
                               setAddresses(prev);
                               const msg = data?.message || (data?.available ? `Available: ${JSON.stringify(data.available)}` : 'Failed to delete address');
                               return alert(msg);
                             }
-
-                            // refresh authoritative list
                             const refreshed = await refreshAddresses();
-                            // if the deleted address was selected, clear selection
                             if (selectedAddress && String(selectedAddress._id ?? selectedAddress.address ?? selectedAddress ?? '') === idOrKey) setSelectedAddress(null);
                           } catch (err) {
                             console.error(err);
@@ -499,58 +499,25 @@ export default function CartPage() {
                           } finally {
                             setDeletingId(null);
                           }
-                        }}
-                        className="text-sm text-red-600 hover:underline"
-                      >
-                        {deletingId === String(addr._id ?? addr.address ?? '') ? 'Deleting...' : 'Delete'}
-                      </button>
+                        }} className="text-sm text-red-600 hover:underline">{deletingId === String(addr._id ?? addr.address ?? '') ? 'Deleting...' : 'Delete'}</button>
+                      </div>
                     </div>
-                  </label>
                   );
                 })}
               </div>
             )}
 
-            <select className="border rounded-lg px-3 py-2 mb-2 text-sm" value={label} onChange={(e) => setLabel(e.target.value)}>
-              <option>Home</option>
-              <option>Work</option>
-              <option>Other</option>
-            </select>
-
-            <textarea
-              placeholder="Enter new address..."
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-              rows={2}
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-            />
-
-            <input
-              placeholder="Pincode"
-              className="w-full border rounded-lg px-3 py-2 text-sm mt-2"
-              value={newPincode}
-              onChange={(e) => handleNewPincodeChange(e.target.value)}
-            />
-
-            {/* autofilled place/district/state for the inline add form */}
-            {newPlace || newDistrict || newStateVal ? (
-              <div className="text-sm text-gray-600 mt-2 space-y-1">
-                {newPlace ? <div><strong>Place:</strong> {newPlace}</div> : null}
-                {newDistrict ? <div><strong>District:</strong> {newDistrict}</div> : null}
-                {newStateVal ? <div><strong>State:</strong> {newStateVal}</div> : null}
-              </div>
-            ) : null}
-
-            <input
-              placeholder="Mobile number"
-              className="w-full border rounded-lg px-3 py-2 text-sm mt-2"
-              value={newMobile}
-              onChange={(e) => setNewMobile(e.target.value)}
-            />
-
-            <button onClick={handleAddAddress} className="mt-2 w-full bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200 text-sm">
-              + Add New Address
-            </button>
+            <div>
+              <button
+                onClick={() => {
+                  setModalInitialData(null);
+                  setShowAddressModal(true);
+                }}
+                className="w-full py-2 px-3 bg-purple-600 text-white rounded-lg"
+              >
+                + Add New Address
+              </button>
+            </div>
           </div>
 
           <button

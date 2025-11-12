@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { getImageUrl } from "@/utils/imageHelper";
 import { Plus, Trash2, UploadCloud, Edit, RefreshCcw } from "lucide-react";
 
@@ -268,14 +269,23 @@ export default function ProductsPage() {
 
   /* ---------- UI ---------- */
   return (
-    <div className="p-4">
+    <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-purple-700">🛍 Products</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Products</h1>
+          <p className="text-gray-600 mt-1">Manage your product inventory and catalog</p>
+        </div>
         <div className="flex gap-2">
-          <button onClick={() => fetchProducts()} className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 flex items-center gap-2">
+          <button 
+            onClick={() => fetchProducts()} 
+            className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+          >
             <RefreshCcw size={16} /> Refresh
           </button>
-          <button onClick={openCreateModal} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+          <button 
+            onClick={openCreateModal} 
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-sm"
+          >
             <Plus size={16} /> Add Product
           </button>
         </div>
@@ -314,7 +324,11 @@ export default function ProductsPage() {
                         <td className="p-2">
                           <img src={thumb} alt="" className="w-12 h-12 object-cover rounded" />
                         </td>
-                        <td>{p.name}</td>
+                        <td>
+                          <Link href={`/product/${p._id}`} className="text-purple-700 hover:underline">
+                            {p.name}
+                          </Link>
+                        </td>
                         <td className="text-center">₹{p.ourPrice ?? p.price}</td>
                         <td className="text-center">{p.colors?.length || 1}</td>
                         <td className="text-center">{totalStock}</td>

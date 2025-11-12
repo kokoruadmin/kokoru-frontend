@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 export default function InvoicePreview({
   order,
@@ -86,20 +87,31 @@ export default function InvoicePreview({
         <div style={{ textAlign: "right" }}>
           <div><strong>Customer:</strong> {order.customerName || "-"}</div>
           <div style={{ maxWidth: 320, whiteSpace: "pre-wrap", marginTop: 4 }}>
-            {(order.address?.address || "")
-              .split(/[\n,]+/)
-              .map((line, i) => (
-                <div key={i}>{line.trim()}</div>
-              ))}
+            {
+              (() => {
+                const { normalizeAddress } = require("../utils/addressHelper");
+                const a = normalizeAddress(order.address || {});
+                return (a.address || "").split(/[\n,]+/).map((line, i) => <div key={i}>{line.trim()}</div>);
+              })()
+            }
           </div>
           <div style={{ marginTop: 4 }}>
-            {order.address?.pincode ? <div><strong>Pincode:</strong> {order.address.pincode}</div> : null}
-            {order.address?.place ? <div><strong>Place:</strong> {order.address.place}</div> : null}
+            {(() => {
+              const { normalizeAddress } = require("../utils/addressHelper");
+              const a = normalizeAddress(order.address || {});
+              return (
+                <>
+                  {a.pincode ? <div><strong>Pincode:</strong> {a.pincode}</div> : null}
+                  {a.place ? <div><strong>Place:</strong> {a.place}</div> : null}
+                  {a.landmark ? <div><strong>Landmark:</strong> {a.landmark}</div> : null}
+                </>
+              );
+            })()}
             <div style={{ marginTop: 4 }}>
               <strong>Email:</strong> {order.userEmail || "N/A"}
             </div>
             <div style={{ marginTop: 4 }}>
-              <strong>Contact:</strong> {order.contact || order.address?.mobile || "N/A"}
+              <strong>Contact:</strong> {order.contact || order.address?.mobile || "N/A"}{order.address?.alternateMobile ? ` • Alt: ${order.address.alternateMobile}` : ''}
             </div>
           </div>
         </div>
@@ -123,10 +135,18 @@ export default function InvoicePreview({
             <th style={{ ...th, textAlign: "right" }}>Subtotal</th>
           </tr>
         </thead>
-        <tbody>
+          <tbody>
           {items.map((it, idx) => (
             <tr key={idx}>
-              <td style={td}>{it.name}</td>
+              <td style={td}>
+                {it.productId || it._id ? (
+                  <Link href={`/product/${it.productId || it._id}`} className="text-purple-700 hover:underline">
+                    {it.name}
+                  </Link>
+                ) : (
+                  it.name
+                )}
+              </td>
               <td style={td}>
                 {[it.colorName, it.sizeLabel]
                   .filter(Boolean)

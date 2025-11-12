@@ -134,7 +134,7 @@ export default function ShopPage() {
             <input
               type="text"
               placeholder="Search products..."
-              className="border border-purple-200 rounded-lg px-3 py-1.5 text-sm shadow-sm focus:ring-2 focus:ring-purple-300 outline-none w-52 md:w-60"
+              className="border border-purple-200 rounded-lg px-3 py-1.5 text-sm shadow-sm focus:ring-2 focus:ring-purple-300 outline-none w-52 md:w-60 bg-white text-black"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -164,9 +164,9 @@ export default function ShopPage() {
               </div>
               <div className="range-price">
                 <label htmlFor="min">Min</label>
-                <input type="number" name="min" defaultValue="0" />
+                <input type="number" name="min" defaultValue="0" className="w-24 form-input" />
                 <label htmlFor="max">Max</label>
-                <input type="number" name="max" defaultValue="10000" />
+                <input type="number" name="max" defaultValue="10000" className="w-24 form-input" />
               </div>
             </div>
           </div>

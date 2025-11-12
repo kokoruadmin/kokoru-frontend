@@ -124,8 +124,11 @@ const payload = {
 
   return (
     <main className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-purple-700">Coupons</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Coupons</h1>
+          <p className="text-gray-600 mt-1">Manage discount coupons and promotional codes</p>
+        </div>
         <button
           onClick={() => {
             setFormData({
@@ -143,7 +146,7 @@ const payload = {
             setShowForm(true);
             setEditCoupon(null);
           }}
-          className="bg-purple-600 text-white px-4 py-2 rounded flex items-center gap-2"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-sm"
         >
           <Plus size={18} /> New Coupon
         </button>

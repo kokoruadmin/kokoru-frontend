@@ -3,16 +3,12 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import AddAddressModal from "../../components/AddAddressModal";
+import { normalizeAddress } from "../../utils/addressHelper";
 
 export default function ProfilePage() {
   const [isClient, setIsClient] = useState(false);
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ name: "", mobile: "", defaultAddress: "" });
-  const [addressText, setAddressText] = useState("");
-  const [pincode, setPincode] = useState("");
-  const [place, setPlace] = useState("");
-  const [district, setDistrict] = useState("");
-  const [stateNameVal, setStateNameVal] = useState("");
+  const [form, setForm] = useState({ firstName: "", lastName: "", mobile: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -54,11 +50,12 @@ export default function ProfilePage() {
       .then((data) => {
         if (data && data.email) {
           setUser(data);
-          setForm({
-            name: data.name || "",
-            mobile: data.mobile || "",
-            defaultAddress: data.defaultAddress || "",
-          });
+          // split name into first and last
+          const full = String(data.name || "").trim();
+          const parts = full.split(/\s+/).filter(Boolean);
+          const first = parts.length ? parts[0] : "";
+          const last = parts.length > 1 ? parts.slice(1).join(" ") : "";
+          setForm({ firstName: first, lastName: last, mobile: data.mobile || "" });
           // populate structured fields if user has addresses
           if (data.addresses && data.addresses.length > 0) {
             // leave structured inputs blank; user can manage existing addresses below
@@ -84,13 +81,17 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
+      // compose name from first + last
+      const composedName = `${String(form.firstName || "").trim()}${form.lastName ? ' ' + String(form.lastName).trim() : ''}`.trim();
+      const payload = { name: composedName, mobile: form.mobile };
+
       const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -103,50 +104,6 @@ export default function ProfilePage() {
       alert("✅ Profile updated successfully!");
       localStorage.setItem("kokoru_user", JSON.stringify(data.user));
       setUser(data.user);
-
-      // If user filled structured address fields, add as an address
-      if (addressText || pincode) {
-        try {
-          const addrRes = await fetch(`${API_BASE_URL}/api/users/addresses`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              name: form.name || data.user.name,
-              mobile: form.mobile || data.user.mobile,
-              address: addressText || form.defaultAddress || "",
-              pincode: pincode || "",
-              place: place || "",
-              district: district || "",
-              state: stateNameVal || "",
-              label: "Home",
-            }),
-          });
-
-          const addrData = await addrRes.json();
-          if (addrRes.ok) {
-            // update local user copy with new addresses if returned
-            if (addrData && addrData.addresses) {
-              const newUser = { ...data.user, addresses: addrData.addresses };
-              localStorage.setItem("kokoru_user", JSON.stringify(newUser));
-              setUser(newUser);
-            }
-            alert("Address saved to your profile.");
-            // clear structured fields
-            setAddressText("");
-            setPincode("");
-            setPlace("");
-            setDistrict("");
-            setStateNameVal("");
-          } else {
-            console.warn("Address add failed:", addrData);
-          }
-        } catch (err) {
-          console.error("Error adding address:", err);
-        }
-      }
     } catch (err) {
       console.error(err);
       alert("Error updating profile");
@@ -166,11 +123,29 @@ export default function ProfilePage() {
       if (!res.ok) return;
       const data = await res.json();
       setUser(data);
-      setForm({ name: data.name || "", mobile: data.mobile || "", defaultAddress: data.defaultAddress || "" });
+      const full = String(data.name || "").trim();
+      const parts = full.split(/\s+/).filter(Boolean);
+      const first = parts.length ? parts[0] : "";
+      const last = parts.length > 1 ? parts.slice(1).join(" ") : "";
+      setForm({ firstName: first, lastName: last, mobile: data.mobile || "" });
     } catch (err) {
       console.error("refreshUser failed", err);
     }
   };
+
+  // Keep the editable form in sync with server user data.
+  useEffect(() => {
+    try {
+      if (!user) return;
+      const full = String(user.name || "").trim();
+      const parts = full.split(/\s+/).filter(Boolean);
+      const first = parts.length ? parts[0] : "";
+      const last = parts.length > 1 ? parts.slice(1).join(" ") : "";
+      setForm((f) => ({ ...f, firstName: first, lastName: last, mobile: user.mobile || "" }));
+    } catch (e) {
+      console.warn('Failed to sync user -> form', e);
+    }
+  }, [user]);
 
   const openAddModal = () => {
     setModalInitial(null);
@@ -178,8 +153,28 @@ export default function ProfilePage() {
   };
 
   const openEditModal = (addr) => {
-    setModalInitial(addr);
-    setShowModal(true);
+    // If editing the special default address or a legacy string, normalize it
+    try {
+      if (!addr) {
+        setModalInitial(null);
+        setShowModal(true);
+        return;
+      }
+
+      if (String(addr._id || '') === 'default' || typeof addr === 'string') {
+        const source = (addr && addr.address) || (typeof addr === 'string' ? addr : user?.defaultAddress || '');
+        const n = normalizeAddress(source);
+        // keep the special _id so save handler knows this is the default entry
+        setModalInitial({ ...n, _id: 'default', label: addr.label || 'Default' });
+      } else {
+        setModalInitial(addr);
+      }
+      setShowModal(true);
+    } catch (e) {
+      console.warn('openEditModal normalization failed', e);
+      setModalInitial(addr);
+      setShowModal(true);
+    }
   };
 
   const handleModalClose = () => {
@@ -198,27 +193,87 @@ export default function ProfilePage() {
       if (modalInitial && modalInitial._id) {
         // update
         setProcessingAddrId(modalInitial._id);
-        const res = await fetch(`${API_BASE_URL}/api/users/addresses/${modalInitial._id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(addrForm),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Update failed");
-        await refreshUser();
-        setShowModal(false);
-        setModalInitial(null);
+
+        // Special-case the 'default' entry: update user's defaultAddress string instead of addresses collection
+        if (String(modalInitial._id) === 'default') {
+          try {
+            const defStr = `${addrForm.address || ''}${addrForm.pincode ? `\nPincode: ${addrForm.pincode}` : ''}`.trim();
+            const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ defaultAddress: defStr }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to update default address');
+            await refreshUser();
+            setShowModal(false);
+            setModalInitial(null);
+          } catch (err) {
+            throw err;
+          }
+        } else {
+          const payload = {
+            label: addrForm.label || "Home",
+            address: {
+              name: addrForm.name || "",
+              address: addrForm.address || "",
+              pincode: addrForm.pincode || "",
+              place: addrForm.place || "",
+              district: addrForm.district || "",
+              state: addrForm.state || "",
+              mobile: addrForm.mobile || "",
+            },
+          };
+
+          const res = await fetch(`${API_BASE_URL}/api/users/addresses/${modalInitial._id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || "Update failed");
+          await refreshUser();
+          setShowModal(false);
+          setModalInitial(null);
+        }
       } else {
         // create
+        const payload = {
+          label: addrForm.label || "Home",
+          address: {
+            name: addrForm.name || "",
+            address: addrForm.address || "",
+            pincode: addrForm.pincode || "",
+            place: addrForm.place || "",
+            district: addrForm.district || "",
+            state: addrForm.state || "",
+            mobile: addrForm.mobile || "",
+          },
+        };
+
         const res = await fetch(`${API_BASE_URL}/api/users/addresses`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(addrForm),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Create failed");
         await refreshUser();
         setShowModal(false);
+          // Make the newly added address the defaultAddress for this profile
+          try {
+            const defAddr = (addrForm.address || "").toString();
+            if (defAddr && defAddr.trim()) {
+              await fetch(`${API_BASE_URL}/api/users/profile`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ defaultAddress: defAddr }),
+              });
+              await refreshUser();
+            }
+          } catch (e) {
+            console.warn('Failed to set default address after modal save', e);
+          }
       }
     } catch (err) {
       console.error("Address save failed:", err);
@@ -308,16 +363,15 @@ export default function ProfilePage() {
 
         {/* ✏️ Editable Fields */}
         <div className="space-y-4">
-          <div>
-            <label className="text-sm font-semibold text-gray-800">
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-purple-200 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-purple-400 focus:outline-none text-purple-800"
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-sm font-semibold text-gray-800">First name</label>
+              <input type="text" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="w-full form-input mt-1" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-800">Surname</label>
+              <input type="text" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="w-full form-input mt-1" />
+            </div>
           </div>
 
           <div>
@@ -328,87 +382,16 @@ export default function ProfilePage() {
               type="text"
               value={form.mobile}
               onChange={(e) => setForm({ ...form, mobile: e.target.value })}
-              className="w-full border border-purple-200 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800"
+              className="w-full form-input mt-1"
             />
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-800">Default Address</label>
-            <textarea
-              rows="2"
-              value={form.defaultAddress}
-              onChange={(e) => setForm({ ...form, defaultAddress: e.target.value })}
-              className="w-full border border-purple-200 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-purple-400 focus:outline-none text-purple-800"
-            />
-
-            <p className="text-sm text-gray-600 mt-2">Or add a structured address:</p>
-            <textarea
-              rows="2"
-              placeholder="Street / Building / Landmark"
-              value={addressText}
-              onChange={(e) => setAddressText(e.target.value)}
-              className="w-full border border-purple-200 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-purple-400 focus:outline-none text-purple-800"
-            />
-
-            <input
-              type="text"
-              placeholder="Pincode"
-              value={pincode}
-              onChange={(e) => {
-                const v = e.target.value;
-                setPincode(v);
-                setPlace("");
-                setDistrict("");
-                setStateNameVal("");
-                if (v && v.length === 6) {
-                  fetch(`${API_BASE_URL}/api/pincode/${v}`)
-                    .then((r) => r.json())
-                    .then((data) => {
-                      if (data && data.ok) {
-                        setPlace(data.places?.[0]?.name || "");
-                        setDistrict(data.district || "");
-                        setStateNameVal(data.state || "");
-                      }
-                    })
-                    .catch(() => {});
-                }
-              }}
-              className="w-full border border-purple-200 rounded-lg px-3 py-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-800"
-            />
-
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <input type="text" placeholder="Place" value={place} readOnly className="border rounded-lg px-3 py-2" />
-              <input type="text" placeholder="District" value={district} readOnly className="border rounded-lg px-3 py-2" />
-              <input type="text" placeholder="State" value={stateNameVal} readOnly className="border rounded-lg px-3 py-2" />
-            </div>
+            <button onClick={handleSave} className="w-full mt-2 bg-purple-600 text-white py-2 rounded">
+              {saving ? "Saving..." : "💾 Save Changes"}
+            </button>
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-gray-800">
-              Email (read-only)
-            </label>
-            <input
-              type="email"
-              value={user.email}
-              readOnly
-              className="w-full border border-purple-200 rounded-lg px-3 py-2 mt-1 bg-gray-100 text-gray-800 cursor-not-allowed"
-            />
-          </div>
-        </div>
-
-        {/* 💾 Save Button */}
-        <div className="mt-6 text-center">
-          <button
-            disabled={saving}
-            onClick={handleSave}
-            className={`px-6 py-2 rounded-lg text-white font-medium transition ${
-              saving
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-purple-700 hover:bg-purple-800 shadow-md"
-            }`}
-          >
-            {saving ? "Saving..." : "💾 Save Changes"}
-          </button>
         </div>
 
         {/* 🧾 Addresses list */}
@@ -433,13 +416,37 @@ export default function ProfilePage() {
                       <button onClick={() => openEditModal(addr)} className="text-sm text-blue-600">Edit</button>
                       <button onClick={() => handleAddressDelete(addr)} className="text-sm text-red-600">Delete</button>
                       <button
-                        onClick={() => {
-                          setForm((f) => ({ ...f, defaultAddress: addr.address || '' }));
-                          handleSave();
+                        onClick={async () => {
+                          // mark processing for this address
+                          setProcessingAddrId(addr._id);
+                          try {
+                            const token = localStorage.getItem("kokoru_token");
+                            if (!token) return alert("Please login first");
+
+                            const res = await fetch(`${API_BASE_URL}/api/users/addresses/${addr._id}/set-default`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
+                            });
+
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok) throw new Error(data.message || "Failed to set default address");
+
+                            // refresh local user and show success
+                            await refreshUser();
+                            alert("Default address updated.");
+                          } catch (err) {
+                            console.error("Set default failed", err);
+                            alert(err.message || "Failed to set default address");
+                          } finally {
+                            setProcessingAddrId(null);
+                          }
                         }}
                         className="text-sm text-green-600"
                       >
-                        Set as default
+                        {processingAddrId === addr._id ? "Processing..." : "Set as default"}
                       </button>
                     </div>
                   </div>

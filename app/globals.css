@@ -243,3 +243,136 @@ button:active,
 .zoom-enter {
   animation: fadeInZoom 0.25s ease-out;
 }
+
+/* 📝 Professional Form Inputs - Kokoru Theme */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="search"],
+textarea,
+select,
+.form-input,
+form input {
+  color: #000000 !important; /* Pure black text for perfect readability */
+  background-color: #ffffff !important; /* Clean white background */
+  font-weight: 500 !important; /* Medium weight for better readability */
+  font-size: 15px !important; /* Slightly larger for better UX */
+  line-height: 1.5 !important;
+  border: 2px solid #e5e7eb !important; /* Light gray border */
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Focus state with Kokoru lavender theme */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="search"]:focus,
+textarea:focus,
+select:focus,
+.form-input:focus,
+form input:focus {
+  color: #000000 !important; /* Pure black on focus */
+  background-color: #ffffff !important; /* Stay white */
+  outline: none !important;
+  border-color: #8b5cf6 !important; /* Kokoru lavender border */
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15) !important; /* Soft lavender glow */
+}
+
+/* Hover state */
+input[type="text"]:hover:not(:focus),
+input[type="email"]:hover:not(:focus),
+input[type="password"]:hover:not(:focus),
+input[type="tel"]:hover:not(:focus),
+input[type="search"]:hover:not(:focus),
+textarea:hover:not(:focus),
+select:hover:not(:focus),
+.form-input:hover:not(:focus),
+form input:hover:not(:focus) {
+  border-color: #a855f7 !important; /* Light purple on hover */
+}
+
+/* Placeholder styling */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important; /* Medium gray for placeholders */
+  opacity: 1 !important;
+  font-style: normal !important; /* Remove italic for cleaner look */
+  font-weight: 400 !important;
+}
+
+/* Override Tailwind focus ring specifically */
+input:focus,
+textarea:focus,
+select:focus {
+  --tw-ring-shadow: none !important;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15) !important;
+}
+
+/* Disabled state */
+input:disabled,
+textarea:disabled,
+select:disabled {
+  color: #6b7280 !important;
+  background-color: #f9fafb !important;
+  border-color: #e5e7eb !important;
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+}
+
+/* Error state with better contrast */
+input.error,
+textarea.error,
+select.error {
+  color: #000000 !important; /* Keep black text */
+  border-color: #ef4444 !important; /* Red border */
+  background-color: #fefefe !important; /* Almost white */
+}
+
+/* Success state with better contrast */
+input.success,
+textarea.success,
+select.success {
+  color: #000000 !important; /* Keep black text */
+  border-color: #10b981 !important; /* Green border */
+  background-color: #fefefe !important; /* Almost white */
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  /* Keep form inputs high-contrast (white background, black text) even when the OS/browser prefers dark mode.
+     Kokoru's UX requires inputs to remain white with black text for readability and brand consistency. */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="search"],
+  textarea,
+  select,
+  .form-input {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+  }
+
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  input[type="tel"]:focus,
+  input[type="search"]:focus,
+  textarea:focus,
+  select:focus,
+  .form-input:focus {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af !important;
+  }
+}
