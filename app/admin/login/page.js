@@ -74,7 +74,7 @@ export default function AdminLoginPage() {
               placeholder="Admin Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
+              className="w-full pl-14 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
               required
             />
           </div>
@@ -86,7 +86,7 @@ export default function AdminLoginPage() {
               placeholder="Admin Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
+              className="w-full pl-14 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
               required
             />
           </div>
@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
               placeholder="Admin Passkey"
               value={passkey}
               onChange={(e) => setPasskey(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
+              className="w-full pl-14 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
               required
             />
           </div>
