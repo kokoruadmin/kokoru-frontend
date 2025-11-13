@@ -8,6 +8,7 @@ import { ShoppingCart, ArrowLeft, Zap, Star } from "lucide-react";
 import { useCart } from "../../../context/CartContext";
 import ShareButton from "../../../components/ShareButton";
 import ReviewSection from "../../../components/ReviewSection";
+import OfferCarousel from "../../../components/OfferCarousel";
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -150,6 +151,8 @@ export default function ProductPage() {
 
   return (
     <main className="min-h-screen bg-purple-50 text-gray-800 p-6 flex flex-col items-center pb-40">
+      {/* Offers carousel (auto-scrolling) */}
+      <OfferCarousel />
       {/* Product details container */}
       <div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full flex flex-col md:flex-row gap-6">
         {/* 🖼️ Product Images */}

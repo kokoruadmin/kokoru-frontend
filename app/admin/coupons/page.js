@@ -8,6 +8,9 @@ export default function AdminCouponsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editCoupon, setEditCoupon] = useState(null);
   const [adminToken, setAdminToken] = useState("");
+  const [productOffers, setProductOffers] = useState([]);
+  const [categories, setCategories] = useState([]);
+
   const [formData, setFormData] = useState({
     code: "",
     discountType: "flat",
@@ -18,6 +21,11 @@ export default function AdminCouponsPage() {
     description: "",
     isActive: true,
     firstOrderOnly: false,
+    showInCarousel: false,
+    type: "coupon", // 'coupon' or 'offer'
+    category: "",
+    offerTitle: "",
+    offerText: "",
     giftToUser: "",
   });
 
@@ -50,8 +58,26 @@ export default function AdminCouponsPage() {
   useEffect(() => { 
     if (adminToken) {
       loadCoupons(); 
+      loadProductOffers();
     }
   }, [adminToken]);
+
+  const loadProductOffers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/products`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const data = await res.json();
+      const prods = Array.isArray(data) ? data : [];
+      const offers = prods.filter((p) => p.offerTitle || p.offerText);
+      setProductOffers(offers);
+      // extract categories
+      const cats = [...new Set(prods.map((p) => p.category).filter(Boolean))];
+      setCategories(cats);
+    } catch (err) {
+      console.error("Failed to load product offers", err);
+    }
+  };
 
   // Submit new / edited coupon
 // Submit new / edited coupon
@@ -72,6 +98,12 @@ const payload = {
   maxDiscount: Number(formData.maxDiscount) || 0,
   minOrder: Number(formData.minOrder) || 0,
   isActive: Boolean(formData.isActive),
+  showInCarousel: Boolean(formData.showInCarousel),
+  // normalize offer fields
+  type: formData.type || "coupon",
+  category: formData.type === "offer" ? formData.category : null,
+  offerTitle: formData.type === "offer" ? (formData.offerTitle || "") : null,
+  offerText: formData.type === "offer" ? (formData.offerText || "") : null,
   firstOrderOnly: Boolean(formData.firstOrderOnly),
   expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : null,
   giftToUser: formData.giftToUser?.trim() ? formData.giftToUser.trim() : null, // ✅ fix here
@@ -99,11 +131,46 @@ const payload = {
     setShowForm(false);
     setEditCoupon(null);
     loadCoupons();
+    loadProductOffers();
   } catch (err) {
     console.error("Error:", err);
     alert(err.message || "Something went wrong while saving the coupon");
   } finally {
     setLoading(false);
+  }
+};
+
+const toggleProductShow = async (product) => {
+  try {
+    const updated = { ...product, showInCarousel: !product.showInCarousel };
+    const res = await fetch(`${API_BASE}/api/products/${product._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify(updated),
+    });
+    if (!res.ok) throw new Error("Failed to update product");
+    await loadProductOffers();
+    alert("Updated product carousel visibility");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to update product");
+  }
+};
+
+const toggleCouponShow = async (coupon) => {
+  try {
+    const updated = { ...coupon, showInCarousel: !coupon.showInCarousel };
+    const res = await fetch(`${API_BASE}/api/coupons/${coupon._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify(updated),
+    });
+    if (!res.ok) throw new Error("Failed to update coupon");
+    await loadCoupons();
+    alert("Updated coupon carousel visibility");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to update coupon");
   }
 };
 
@@ -126,8 +193,8 @@ const payload = {
     <main className="p-6 bg-gray-50 min-h-screen">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Coupons</h1>
-          <p className="text-gray-600 mt-1">Manage discount coupons and promotional codes</p>
+          <h1 className="text-3xl font-bold text-gray-900">Offers & Coupons</h1>
+          <p className="text-gray-600 mt-1">Create and manage category offers and coupons (choose type when creating)</p>
         </div>
         <button
           onClick={() => {
@@ -141,6 +208,11 @@ const payload = {
               description: "",
               isActive: true,
               firstOrderOnly: false,
+              showInCarousel: false,
+              type: "coupon",
+              category: "",
+              offerTitle: "",
+              offerText: "",
               giftToUser: "",
             });
             setShowForm(true);
@@ -148,7 +220,7 @@ const payload = {
           }}
           className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-sm"
         >
-          <Plus size={18} /> New Coupon
+          <Plus size={18} /> New Offer / Coupon
         </button>
       </div>
 
@@ -164,16 +236,22 @@ const payload = {
     {/* 🧾 Coupon Basic Details */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+        <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="border border-gray-300 p-2 rounded w-full text-sm focus:ring-2 focus:ring-purple-300 bg-white">
+          <option value="coupon">Coupon</option>
+          <option value="offer">Category Offer</option>
+        </select>
+      </div>
+
+      <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Coupon Code
         </label>
 <input
   type="text"
-  placeholder="User ID or Email"
-  value={formData.giftToUser ?? ""}  // ✅ prevent null issue
-  onChange={(e) =>
-    setFormData({ ...formData, giftToUser: e.target.value })
-  }
+  placeholder="Coupon code (if creating coupon)"
+  value={formData.code ?? ""}
+  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
   className="border border-gray-300 p-2 rounded w-full text-sm focus:ring-2 focus:ring-purple-300"
 />
 
@@ -195,6 +273,29 @@ const payload = {
         </select>
       </div>
     </div>
+
+    {/* Offer-specific fields */}
+    {formData.type === "offer" && (
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="border border-gray-300 p-2 rounded w-full text-sm focus:ring-2 focus:ring-purple-300 bg-white">
+            <option value="">Select category</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Offer Title</label>
+          <input value={formData.offerTitle} onChange={(e) => setFormData({ ...formData, offerTitle: e.target.value })} className="border border-gray-300 p-2 rounded w-full text-sm focus:ring-2 focus:ring-purple-300" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Offer Text</label>
+          <input value={formData.offerText} onChange={(e) => setFormData({ ...formData, offerText: e.target.value })} className="border border-gray-300 p-2 rounded w-full text-sm focus:ring-2 focus:ring-purple-300" />
+        </div>
+      </div>
+    )}
 
     {/* 💰 Discount Details */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -323,6 +424,14 @@ const payload = {
         />
         First Order Only
       </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={formData.showInCarousel}
+          onChange={(e) => setFormData({ ...formData, showInCarousel: e.target.checked })}
+        />
+        Show in Carousel
+      </label>
     </div>
 
     {/* Buttons */}
@@ -348,6 +457,39 @@ const payload = {
 )}
 
 
+      {/* Product Offers - admin selection */}
+  <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-800">Product Offers</h2>
+          <div className="flex items-center gap-2">
+            <button onClick={loadProductOffers} className="px-3 py-1 bg-gray-100 rounded">Refresh</button>
+          </div>
+        </div>
+
+        {productOffers.length === 0 ? (
+          <div className="text-sm text-gray-500">No product offers found.</div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border p-3 space-y-2">
+            {productOffers.map((p) => (
+              <div key={p._id} className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">{p.name}</div>
+                  <div className="text-xs text-gray-500">{p.offerTitle || p.offerText}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={!!p.showInCarousel} onChange={() => toggleProductShow(p)} />
+                    Show
+                  </label>
+                  <button onClick={() => { setShowForm(false); setEditCoupon(null); window.open(`/product/${p._id}`, "_blank"); }} className="text-sm text-purple-600">Open product</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-purple-100 text-gray-700">
@@ -358,6 +500,7 @@ const payload = {
               <th className="p-2 text-left">Min Order</th>
               <th className="p-2 text-left">Expiry</th>
               <th className="p-2 text-left">Active</th>
+              <th className="p-2 text-left">Show</th>
               <th className="p-2 text-left">Actions</th>
             </tr>
           </thead>
@@ -370,18 +513,23 @@ const payload = {
               coupons.map((c) => (
                 <tr key={c._id} className="border-t">
                   <td className="p-2 font-semibold">{c.code}</td>
-                  <td className="p-2">{c.discountType}</td>
+                  <td className="p-2">{c.type === 'offer' ? 'Offer' : 'Coupon'}</td>
                   <td className="p-2">
-                    {c.discountType === "flat"
-                      ? `₹${c.discountValue}`
-                      : `${c.discountValue}% (max ₹${c.maxDiscount})`}
+                    {c.type === 'offer' ? (c.offerTitle || '-') : (
+                      c.discountType === "flat"
+                        ? `₹${c.discountValue}`
+                        : `${c.discountValue}% (max ₹${c.maxDiscount})`
+                    )}
                   </td>
-                  <td className="p-2">₹{c.minOrder}</td>
-                  <td className="p-2">{new Date(c.expiryDate).toLocaleDateString()}</td>
+                  <td className="p-2">{c.type === 'offer' ? (c.category || '-') : `₹${c.minOrder}`}</td>
+                  <td className="p-2">{c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : '-'}</td>
                   <td className="p-2">{c.isActive ? "✅" : "❌"}</td>
+                  <td className="p-2">
+                    <input type="checkbox" checked={!!c.showInCarousel} onChange={() => toggleCouponShow(c)} />
+                  </td>
                   <td className="p-2 flex gap-2">
-                    <button onClick={() => copyCode(c.code)} title="Copy"><Copy size={16} /></button>
-                    <button onClick={() => { setEditCoupon(c); setFormData(c); setShowForm(true); }} title="Edit"><Edit size={16} /></button>
+                    {c.type !== 'offer' && <button onClick={() => copyCode(c.code)} title="Copy"><Copy size={16} /></button>}
+                    <button onClick={() => { setEditCoupon(c); setFormData({ ...formData, ...c }); setShowForm(true); }} title="Edit"><Edit size={16} /></button>
                     <button onClick={() => handleDelete(c._id)} title="Delete"><Trash2 size={16} /></button>
                   </td>
                 </tr>
@@ -389,6 +537,32 @@ const payload = {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Category Offers created as type='offer' saved in coupons collection */}
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold mb-2">Category Offers</h2>
+        {coupons.filter((c) => c.type === 'offer').length === 0 ? (
+          <div className="text-sm text-gray-500">No category offers created.</div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border p-3 space-y-2">
+            {coupons.filter((c) => c.type === 'offer').map((o) => (
+              <div key={o._id} className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">{o.offerTitle}</div>
+                  <div className="text-xs text-gray-500">Category: {o.category} — {o.offerText}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={!!o.showInCarousel} onChange={() => toggleCouponShow(o)} />
+                    Show
+                  </label>
+                  <button onClick={() => { setEditCoupon(o); setFormData({ ...formData, ...o }); setShowForm(true); }} className="text-sm text-purple-600">Edit</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

@@ -77,6 +77,14 @@ export default function ProductsPage() {
 
   const [editingProduct, setEditingProduct] = useState(null);
   const [draft, setDraft] = useState(emptyProduct);
+  const [newCategories, setNewCategories] = useState([]);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const categories = useMemo(() => {
+    const fromProducts = products.map((p) => p.category).filter(Boolean);
+    return [...new Set([...fromProducts, ...newCategories])];
+  }, [products, newCategories]);
 
   /* ---------- fetch products ---------- */
   const fetchProducts = async () => {
@@ -372,7 +380,54 @@ export default function ProductsPage() {
                 <input value={draft.name} onChange={(e) => setDraftField("name", e.target.value)} className="w-full border rounded px-3 py-2" />
 
                 <label className="text-sm font-medium mt-3 block">Category</label>
-                <input value={draft.category} onChange={(e) => setDraftField("category", e.target.value)} className="w-full border rounded px-3 py-2" />
+                <div className="flex gap-2 items-center">
+                  <select
+                    value={draft.category}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "__add_new__") {
+                        setShowAddCategory(true);
+                        setDraftField("category", "");
+                      } else {
+                        setDraftField("category", v);
+                        setShowAddCategory(false);
+                      }
+                    }}
+                    className="w-full border rounded px-3 py-2"
+                  >
+                    <option value="">Select category</option>
+                    {categories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                    <option value="__add_new__">+ Add new category...</option>
+                  </select>
+
+                  <button type="button" onClick={() => setShowAddCategory((s) => !s)} className="px-3 py-2 bg-gray-100 rounded">
+                    + Add
+                  </button>
+                </div>
+
+                {showAddCategory && (
+                  <div className="mt-2 flex gap-2">
+                    <input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="New category name" className="w-full border rounded px-3 py-2" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = newCategoryName.trim();
+                        if (!name) return alert("Enter a category name");
+                        setNewCategories((prev) => (prev.includes(name) ? prev : [...prev, name]));
+                        setDraftField("category", name);
+                        setNewCategoryName("");
+                        setShowAddCategory(false);
+                      }}
+                      className="px-3 py-2 bg-purple-600 text-white rounded"
+                    >
+                      Create
+                    </button>
+                  </div>
+                )}
 
                 <label className="text-sm font-medium mt-3 block">Description</label>
                 <textarea value={draft.description} onChange={(e) => setDraftField("description", e.target.value)} className="w-full border rounded px-3 py-2" rows={4} />

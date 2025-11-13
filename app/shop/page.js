@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import ProductCard from "../../components/ProductCard";
+import OfferCarousel from "../../components/OfferCarousel";
 
 export default function ShopPage() {
   const [products, setProducts] = useState([]);
@@ -101,6 +102,8 @@ export default function ShopPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-white text-gray-800 px-4 sm:px-8 py-10">
+      {/* Offers carousel (auto-scrolling) */}
+      <OfferCarousel />
       {/* 🟣 Filter Section */}
       <section
         className="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border border-purple-100 p-5 mb-10"
