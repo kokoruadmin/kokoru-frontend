@@ -68,37 +68,43 @@ export default function AdminLoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400" size={18} />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-purple-50 border border-purple-100 text-purple-600 rounded-full flex items-center justify-center shadow-sm">
+              <User size={16} />
+            </div>
             <input
               type="text"
               placeholder="Admin Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full pl-14 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
+              className="w-full pl-16 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
               required
             />
           </div>
 
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400" size={18} />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-purple-50 border border-purple-100 text-purple-600 rounded-full flex items-center justify-center shadow-sm">
+              <Lock size={16} />
+            </div>
             <input
               type="password"
               placeholder="Admin Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-14 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
+              className="w-full pl-16 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
               required
             />
           </div>
 
           <div className="relative">
-            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400" size={18} />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-purple-50 border border-purple-100 text-purple-600 rounded-full flex items-center justify-center shadow-sm">
+              <KeyRound size={16} />
+            </div>
             <input
               type="password"
               placeholder="Admin Passkey"
               value={passkey}
               onChange={(e) => setPasskey(e.target.value)}
-              className="w-full pl-14 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
+              className="w-full pl-16 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-900"
               required
             />
           </div>
