@@ -16,38 +16,14 @@ export default function OfferCarousel({ interval = 5000 }) {
 
     const load = async () => {
       try {
-        const [pRes, cRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/products`),
-          fetch(`${API_BASE_URL}/api/coupons`),
-        ]);
-        const [pData, cData] = await Promise.all([pRes.json(), cRes.json()]);
-
-        const productOffers = (Array.isArray(pData) ? pData : [])
-          .filter((p) => (p.offerTitle || p.offerText) && p.showInCarousel)
-          .map((p) => ({
-            id: `p-${p._id}`,
-            type: "product",
-            title: p.offerTitle || p.name,
-            text: p.offerText || p.description || "",
-            image: p.colors?.[0]?.images?.[0] || p.imageUrl || null,
-            href: `/product/${p._id}`,
-          }));
-
-        const coupons = Array.isArray(cData) ? cData : [];
-        const couponOffers = coupons
-          .filter((c) => c.showInCarousel)
-          .map((c) => ({
-            id: `c-${c._id || c.code}`,
-            type: "coupon",
-            title: c.title || c.code || "Coupon",
-            text: c.description || `${c.discountType === "percent" ? `${c.discountValue}% off` : `₹${c.discountValue} off`}`,
-            image: c.imageUrl || null,
-            href: "/shop",
-            code: c.code,
-          }));
-
-        if (!mounted) return;
-        setItems([...productOffers, ...couponOffers]);
+        const response = await fetch(`${API_BASE_URL}/api/promotions/carousel`);
+        const data = await response.json();
+        
+        if (data.success && data.items) {
+          setItems(data.items);
+        } else {
+          console.error('No promotion items found');
+        }
       } catch (err) {
         console.error("Failed to load offers", err);
       }
